@@ -4,6 +4,7 @@ import java.util.*;
 
 import javax.xml.parsers.*;
 
+import org.apache.commons.cli.*;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
@@ -12,7 +13,6 @@ import sharedMethods.algorithmInterface;
 import dataStructure.*;
 
 public class runTogForOpenHPI {
-
 	/**
 	 * @param args
 	 * @throws IOException
@@ -20,46 +20,127 @@ public class runTogForOpenHPI {
 	 * @throws ParserConfigurationException
 	 * @throws SQLException
 	 */
-	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
 
-		System.out.println("Here");
-		return;
+	private static final String LECTURE_KEY = "id";
+	private static final String FOLDER_KEY = "folder";
+	private static final String LOGGER_KEY = "log";
+	private static final String PDF_KEY = "pdf";
+	private static final String PPTX_KEY = "PPTX";
+	
+	@SuppressWarnings("static-access")
+	public static Options defineCLI(){
+		Options opt = new Options();
+
+		opt.addOption(new Option("help", "print this message"));
+		opt.addOption(new Option(PDF_KEY, "assume the slides are in PDF format and enforce PDF parsing"));
+		opt.addOption(new Option(PPTX_KEY, "assume the slides are in PPTX format and enforce PPTX parsing"));
+		
+		opt.addOption(
+			OptionBuilder
+				.withArgName( "lecture_id" )
+                .hasArg()
+                .isRequired()
+                .withDescription(  "id of the processed lecture" )
+                .create( LECTURE_KEY ));
+
+		opt.addOption(
+			OptionBuilder
+				.withArgName( "lecture_folder" )
+				.isRequired()
+                .hasArg()
+                .withDescription(  "folder with the preprocessed slides" )
+                .create( FOLDER_KEY ));
+		
+		opt.addOption(
+				OptionBuilder
+					.withArgName( "logger_file" )
+	                .hasArg()
+	                .withDescription(  "file for logging" )
+	                .create( LOGGER_KEY ));
+		
+		return opt;
+	}
+	
+	public static CommandLine parseCLI(Options opt, String[] args){
+		CommandLine cmd = null;
+		try {
+			cmd = new BasicParser().parse(opt, args);
+			if(cmd.hasOption("help"))
+				throw new ParseException("");
+			
+			if(cmd.hasOption(PDF_KEY) && cmd.hasOption(PPTX_KEY))
+				throw new ParseException("Please choose either -pdf OR -pptx option, but NOT BOTH!");
+
+			return cmd;
+		} catch (ParseException e){
+			System.err.println(e.getMessage());
+			printHelp(opt);
+			return null;
+		}
+		
+		
+	}
+	
+	public static void printHelp(Options opt){
+		new HelpFormatter().printHelp(new runTogForOpenHPI().getClass().getName(), opt);
 	}
 
-	public static void old_main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
-		int OCR_Origin = 1;
+	private static final int pageWidth = 1024;
+	private static final int pageHeight = 768;
+	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
+	private static final boolean changeBBImageNames = false;
+	
+	private enum OCROriginMode{
 		/*
 		 * Mode 0: Load from mySQL database
 		 * Mode 1: Load from xml files of teleTASK
 		 * Mode 2: Load from xml files of ACM GC
 		 * Mode 3: Load from additional pdf file
 		 */
+		mySQL,
+		teleTaskXML,
+		ACM_XML,
+		PDF
+	}
+	
+	public static PrintStream setUpLogger(String loggerFile) throws FileNotFoundException{
 
-		boolean havePPTX = false;
-		boolean havePDF = true;
-		String lecture_id = "6670";
-		boolean changeBBImageNames = false;
-		int pageWidth = 1024;
-		int pageHeight = 768;
-		int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
+		File newFile = new File(loggerFile);
+		if(newFile.exists()) newFile.delete();
 
-		File newFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt");
-		if(newFile.exists())
-		{
-			newFile.delete();
-		}
-		PrintStream console = System.out;
-		PrintStream out = new PrintStream(new BufferedOutputStream(new FileOutputStream("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt", true)));
+		PrintStream out = new PrintStream(new BufferedOutputStream(new FileOutputStream(newFile, true)));
 
 		System.setOut(out);
 		System.setErr(out);
+		
+		return out;
 
+	}
+	
+	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
+		Options opt = defineCLI();
+		CommandLine cmd = parseCLI(opt, args);
+		if(cmd == null) return;
+//		
+//		System.out.println("Here");
+//	}
+//
+//	public static void old_main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
+		final OCROriginMode OCR_Origin = OCROriginMode.mySQL;
+
+		boolean havePPTX = false;
+		boolean havePDF = true;
+		final String lecture_id = cmd.getOptionValue(LECTURE_KEY, "6670");
+		final String workingFolder = cmd.getOptionValue(FOLDER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\");
+		PrintStream console = System.out;
+		PrintStream out = setUpLogger(cmd.getOptionValue(LOGGER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt"));
+		
+		
 		ArrayList<textLine> tll = new ArrayList<textLine>();
-		tll = loadOcrResults(OCR_Origin, lecture_id, localTimeZoneOffset, changeBBImageNames);
+		tll = loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
 		System.out.println("< STEP 1: Loading from Database >");
-		for(int i = 0; i < tll.size(); i++)
-		{
+		for(int i = 0; i < tll.size(); i++) {
 			textLine t = tll.get(i);
 			System.out.print(t.get_slideID() + "  ");
 			System.out.print(t.get_type() + "  ");
@@ -80,13 +161,13 @@ public class runTogForOpenHPI {
 
 		if(havePPTX)
 		{
-			String fileName = "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\slides.pptx";
+			String fileName = workingFolder + lecture_id + "\\slides.pptx";
 			finalResults = og.generateOutlineWithPPTX(tll, fileName);
 		}
 		else if(havePDF)
 		{
 			ArrayList<textLine> tll_pdf = new ArrayList<textLine>();
-			tll_pdf = loadOcrResults(3, lecture_id, localTimeZoneOffset, changeBBImageNames);
+			tll_pdf = loadOcrResults(OCROriginMode.PDF, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 			finalResults = og.generateOutlineWithPDF(tll, tll_pdf);
 			tll_pdf.clear();
 		}
@@ -181,17 +262,17 @@ public class runTogForOpenHPI {
 			System.out.println();
 
 			// Do the adaptive round
-			tll = loadOcrResults(OCR_Origin, lecture_id, localTimeZoneOffset, false);
+			tll = loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, false);
 
 			if(havePPTX)
 			{
-				String fileName = "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\slides.pptx";
+				String fileName = workingFolder + lecture_id + "\\slides.pptx";
 				finalResults = og.generateOutlineWithPPTX(tll, fileName);
 			}
 			else if(havePDF)
 			{
 				ArrayList<textLine> tll_pdf = new ArrayList<textLine>();
-				tll_pdf = loadOcrResults(3, lecture_id, localTimeZoneOffset, changeBBImageNames);
+				tll_pdf = loadOcrResults(OCROriginMode.PDF, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
 				finalResults = og.generateOutlineWithPDF(tll, tll_pdf);
 				tll_pdf.clear();
@@ -304,8 +385,8 @@ public class runTogForOpenHPI {
 					for(int j = 0; j < lastRoundTableAreas.size(); j++)
 					{
 						int[] current = lastRoundTableAreas.get(j);
-						if(Math.abs(current[0] - ref[0]) <= pageWidth/256 && Math.abs(current[1] - ref[1]) <= pageHeight/256
-								&& current[2] == ref[2] && Math.abs(current[3] - ref[3]) <= pageHeight/256)
+						if(Math.abs(current[0] - ref[0]) <= pageWidth / 256 && Math.abs(current[1] - ref[1]) <= pageHeight/256
+								&& current[2] == ref[2] && Math.abs(current[3] - ref[3]) <= pageHeight / 256)
 						{
 							match = true;
 							break;
@@ -364,11 +445,8 @@ public class runTogForOpenHPI {
 		System.out.println("< Final Results: >");
 		System.out.println();
 
-		newFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\outline");
-		if(newFile.exists())
-		{
-			newFile.delete();
-		}
+		File newFile = new File(workingFolder + lecture_id + "\\outline");
+		if(newFile.exists()) newFile.delete();
 
 		for(int i = 0; i < finalResults.size(); i++)
 		{
@@ -416,18 +494,18 @@ public class runTogForOpenHPI {
 		System.out.println();
 
 		ArrayList<textOutline> segments = new ArrayList<textOutline>();
-		segments = autoSegmentationAndAnnotation(finalResults, lecture_id);
+		segments = autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
 
 		out.close();
 		System.setOut(console);
 	}
 
-	public static ArrayList<textLine> loadOcrResults(int OCR_Origin, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException
+	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException
 	{
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
 
-		if(OCR_Origin == 0)
+		if(OCR_Origin == OCROriginMode.mySQL)
 		{
 			String url = "jdbc:mysql://localhost/ak?user=Xyche&password=123&useUnicode=true&characterEncoding=8859_1";
 			String sql = "select t.*, l.start from ocrtool_textline as t, ocrtool_lectureslide as l where t.lectureSlide_id = l.id and l.lecture_id = " + lecture_id + " order by id";
@@ -499,11 +577,10 @@ public class runTogForOpenHPI {
 			ps.close();
 			connection.close();
 		}
-		else if(OCR_Origin == 1)
-		{
+		else if(OCR_Origin == OCROriginMode.teleTaskXML) {
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder builder = factory.newDocumentBuilder();
-			Document doc = builder.parse(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\recognition\\recognition.xml"));
+			Document doc = builder.parse(new File(workingFolder + lecture_id + "\\recognition\\recognition.xml"));
 
 			Element root = doc.getDocumentElement();
 			NodeList nodes = root.getElementsByTagName("TextObject");
@@ -584,13 +661,13 @@ public class runTogForOpenHPI {
 
 					if(changeBBImageNames)
 					{
-						File original = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\thumbnails\\" + currentSlideNumOriginal + ".jpg");
-						File renamed  = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\thumbnails\\" + currentSlideNumNew + ".jpg");
+						File original = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumOriginal + ".jpg");
+						File renamed  = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumNew + ".jpg");
 						if(!renamed.exists())
 							original.renameTo(renamed);
 
-						original = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumOriginal + ".jpg");
-						renamed  = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumNew + ".jpg");
+						original = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumOriginal + ".jpg");
+						renamed  = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumNew + ".jpg");
 						if(!renamed.exists())
 							original.renameTo(renamed);
 					}
@@ -607,7 +684,7 @@ public class runTogForOpenHPI {
 				}
 			}
 		}
-		else if(OCR_Origin == 2)
+		else if(OCR_Origin == OCROriginMode.ACM_XML)
 		{
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder builder = factory.newDocumentBuilder();
@@ -706,9 +783,9 @@ public class runTogForOpenHPI {
 			System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
 			Collections.sort(tll, tlc);
 		}
-		else if(OCR_Origin == 3)
+		else if(OCR_Origin == OCROriginMode.PDF)
 		{ //PDF input
-			String fileName = "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\slides.pdf";
+			String fileName = workingFolder + lecture_id + "\\slides.pdf";
 
 			pdfParser pp = new pdfParser();
 
@@ -717,7 +794,7 @@ public class runTogForOpenHPI {
 		return tll;
 	}
 
-	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> fr, String lecture_id)
+	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> fr, String workingFolder, String lecture_id)
 	{
 		ArrayList<textOutline> onlyTitles = new ArrayList<textOutline>();
 
@@ -874,7 +951,7 @@ public class runTogForOpenHPI {
 
 		count = 0;
 		int sum = 0;
-		File newFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lecture_id + "\\seg");
+		File newFile = new File(workingFolder + lecture_id + "\\seg");
 		if(newFile.exists())
 		{
 			newFile.delete();
