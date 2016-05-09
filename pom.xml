@@ -70,9 +70,9 @@
             <mainClass>runTogForOpenHPI</mainClass>
             <arguments>
               <argument>-id</argument>
-              <argument>100</argument>
+              <argument>test</argument>
               <argument>-folder</argument>
-              <argument>C:\_HPI-tasks\20130101_TreeOutlineGeneration\_OCR_result\</argument>
+              <argument>D:\HIWI_DATA\slides\</argument>
               <argument>-log</argument>
               <argument>debug.log</argument>
             </arguments>

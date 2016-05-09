@@ -23,3 +23,16 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+
+
+####### LOGS
+*.log
+
+
+####### VIDEOS
+*.mp4
+
+####### RESULTS
+out/
+
+

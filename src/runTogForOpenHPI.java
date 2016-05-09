@@ -8,100 +8,17 @@ import org.apache.commons.cli.*;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
-
 import sharedMethods.algorithmInterface;
 import dataStructure.*;
 
 public class runTogForOpenHPI {
-	/**
-	 * @param args
-	 * @throws IOException
-	 * @throws SAXException
-	 * @throws ParserConfigurationException
-	 * @throws SQLException
-	 */
 
-	private static final String LECTURE_KEY = "id";
-	private static final String FOLDER_KEY = "folder";
-	private static final String LOGGER_KEY = "log";
-	private static final String PDF_KEY = "pdf";
-	private static final String PPTX_KEY = "PPTX";
 	
-	@SuppressWarnings("static-access")
-	public static Options defineCLI(){
-		Options opt = new Options();
-
-		opt.addOption(new Option("help", "print this message"));
-		opt.addOption(new Option(PDF_KEY, "assume the slides are in PDF format and enforce PDF parsing"));
-		opt.addOption(new Option(PPTX_KEY, "assume the slides are in PPTX format and enforce PPTX parsing"));
-		
-		opt.addOption(
-			OptionBuilder
-				.withArgName( "lecture_id" )
-                .hasArg()
-                .isRequired()
-                .withDescription(  "id of the processed lecture" )
-                .create( LECTURE_KEY ));
-
-		opt.addOption(
-			OptionBuilder
-				.withArgName( "lecture_folder" )
-				.isRequired()
-                .hasArg()
-                .withDescription(  "folder with the preprocessed slides" )
-                .create( FOLDER_KEY ));
-		
-		opt.addOption(
-				OptionBuilder
-					.withArgName( "logger_file" )
-	                .hasArg()
-	                .withDescription(  "file for logging" )
-	                .create( LOGGER_KEY ));
-		
-		return opt;
-	}
 	
-	public static CommandLine parseCLI(Options opt, String[] args){
-		CommandLine cmd = null;
-		try {
-			cmd = new BasicParser().parse(opt, args);
-			if(cmd.hasOption("help"))
-				throw new ParseException("");
-			
-			if(cmd.hasOption(PDF_KEY) && cmd.hasOption(PPTX_KEY))
-				throw new ParseException("Please choose either -pdf OR -pptx option, but NOT BOTH!");
-
-			return cmd;
-		} catch (ParseException e){
-			System.err.println(e.getMessage());
-			printHelp(opt);
-			return null;
-		}
-		
-		
-	}
-	
-	public static void printHelp(Options opt){
-		new HelpFormatter().printHelp(new runTogForOpenHPI().getClass().getName(), opt);
-	}
-
 	private static final int pageWidth = 1024;
 	private static final int pageHeight = 768;
 	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
 	private static final boolean changeBBImageNames = false;
-	
-	private enum OCROriginMode{
-		/*
-		 * Mode 0: Load from mySQL database
-		 * Mode 1: Load from xml files of teleTASK
-		 * Mode 2: Load from xml files of ACM GC
-		 * Mode 3: Load from additional pdf file
-		 */
-		mySQL,
-		teleTaskXML,
-		ACM_XML,
-		PDF
-	}
 	
 	public static PrintStream setUpLogger(String loggerFile) throws FileNotFoundException{
 
@@ -118,22 +35,22 @@ public class runTogForOpenHPI {
 	}
 	
 	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
-		Options opt = defineCLI();
-		CommandLine cmd = parseCLI(opt, args);
+		Options opt = ArgumentParser.defineCLI();
+		CommandLine cmd = ArgumentParser.parseCLI(opt, args);
 		if(cmd == null) return;
 //		
 //		System.out.println("Here");
 //	}
 //
 //	public static void old_main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
-		final OCROriginMode OCR_Origin = OCROriginMode.mySQL;
+		final OCROriginMode OCR_Origin = OCROriginMode.PDF;
 
 		boolean havePPTX = false;
 		boolean havePDF = true;
-		final String lecture_id = cmd.getOptionValue(LECTURE_KEY, "6670");
-		final String workingFolder = cmd.getOptionValue(FOLDER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\");
+		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY, "6670");
+		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\");
 		PrintStream console = System.out;
-		PrintStream out = setUpLogger(cmd.getOptionValue(LOGGER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt"));
+		PrintStream out = setUpLogger(cmd.getOptionValue(ArgumentParser.LOGGER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt"));
 		
 		
 		ArrayList<textLine> tll = new ArrayList<textLine>();
@@ -500,298 +417,310 @@ public class runTogForOpenHPI {
 		System.setOut(console);
 	}
 
-	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException
-	{
+	static ArrayList<textLine> loadFromMySQL(String lecture_id) throws SQLException{
+
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-
-		if(OCR_Origin == OCROriginMode.mySQL)
-		{
-			String url = "jdbc:mysql://localhost/ak?user=Xyche&password=123&useUnicode=true&characterEncoding=8859_1";
-			String sql = "select t.*, l.start from ocrtool_textline as t, ocrtool_lectureslide as l where t.lectureSlide_id = l.id and l.lecture_id = " + lecture_id + " order by id";
-			try {
-				Class.forName("com.mysql.jdbc.Driver").newInstance();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
-			Connection connection = DriverManager.getConnection(url);
-			PreparedStatement ps = null;
-			ps = connection.prepareStatement(sql);
-			ResultSet rs1 = ps.executeQuery();
-
-			int slideNumBase = 0;
-			int currentSlide = 0;
-
-			// Load data from database and set them into textLine structure
-			// Then change the order from descend to ascend by id inside each slide
-
-			while(rs1.next())
-			{
-				int tempSlideID = rs1.getInt("lectureSlide_id");
-				if(slideNumBase == 0) slideNumBase = tempSlideID;
-				tempSlideID -= slideNumBase;
-
-				int intType = -1;
-				String temp = rs1.getString("type");
-				if(temp.contentEquals("Title")) intType = 1;
-				else if (temp.contentEquals("Subtitle")) intType = 2;
-				else if (temp.contentEquals("Footline")) intType = 3;
-				else intType = 0;
-
-				textLine t = new textLine(tempSlideID + 1,
-										  rs1.getString("content"),
-										  intType,
-										  rs1.getInt("top"),
-										  rs1.getInt("left"),
-										  rs1.getInt("width"),
-										  rs1.getInt("height"),
-										  rs1.getTime("start"));
-
-				if(tempSlideID + 1 > currentSlide)
-				{
-					if(!tl2.isEmpty())
-					{
-						for(int i = tl2.size() - 1; i >= 0; i--)
-						{
-							tll.add(tl2.get(i));
-						}
-					}
-					tl2.clear();
-					currentSlide = tempSlideID + 1;
-				}
-
-				tl2.add(t);
-			}
-
-			if(!tl2.isEmpty())
-			{
-				for(int i = tl2.size() - 1; i >= 0; i--)
-				{
-					tll.add(tl2.get(i));
-				}
-			}
-
-			tl2.clear();
-			rs1.close();
-			ps.close();
-			connection.close();
+		
+		String url = "jdbc:mysql://localhost/ak?user=Xyche&password=123&useUnicode=true&characterEncoding=8859_1";
+		String sql = "select t.*, l.start from ocrtool_textline as t, ocrtool_lectureslide as l where t.lectureSlide_id = l.id and l.lecture_id = " + lecture_id + " order by id";
+		try {
+			Class.forName("com.mysql.jdbc.Driver").newInstance();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		else if(OCR_Origin == OCROriginMode.teleTaskXML) {
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder builder = factory.newDocumentBuilder();
-			Document doc = builder.parse(new File(workingFolder + lecture_id + "\\recognition\\recognition.xml"));
 
-			Element root = doc.getDocumentElement();
-			NodeList nodes = root.getElementsByTagName("TextObject");
+		Connection connection = DriverManager.getConnection(url);
+		PreparedStatement ps = null;
+		ps = connection.prepareStatement(sql);
+		ResultSet rs1 = ps.executeQuery();
 
-			if (nodes != null && nodes.getLength() > 0)
+		int slideNumBase = 0;
+		int currentSlide = 0;
+
+		// Load data from database and set them into textLine structure
+		// Then change the order from descend to ascend by id inside each slide
+
+		while(rs1.next())
+		{
+			int tempSlideID = rs1.getInt("lectureSlide_id");
+			if(slideNumBase == 0) slideNumBase = tempSlideID;
+			tempSlideID -= slideNumBase;
+
+			int intType = -1;
+			String temp = rs1.getString("type");
+			if(temp.contentEquals("Title")) intType = 1;
+			else if (temp.contentEquals("Subtitle")) intType = 2;
+			else if (temp.contentEquals("Footline")) intType = 3;
+			else intType = 0;
+
+			textLine t = new textLine(tempSlideID + 1,
+									  rs1.getString("content"),
+									  intType,
+									  rs1.getInt("top"),
+									  rs1.getInt("left"),
+									  rs1.getInt("width"),
+									  rs1.getInt("height"),
+									  rs1.getTime("start"));
+
+			if(tempSlideID + 1 > currentSlide)
 			{
-				for (int i = 0; i < nodes.getLength(); i++)
+				if(!tl2.isEmpty())
 				{
-					Element textLine = (Element) nodes.item(i);
-					NodeList nn = textLine.getChildNodes();
-					textLine t = new textLine();
-					for (int j = 0; j < nn.getLength(); j++)
+					for(int i = tl2.size() - 1; i >= 0; i--)
 					{
-						if (nn.item(j).getNodeType() == Node.ELEMENT_NODE)
-						{
-							if (nn.item(j).getNodeName().equals("FrameName"))
-								t.set_slideID(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("StartSecond"))
-							{
-								int temp = Integer.parseInt(nn.item(j).getFirstChild().getNodeValue())*1000 - localTimeZoneOffset;
-								Time ti = new Time(temp);
-								t.set_time(ti);
-							}
-							else if(nn.item(j).getNodeName().equals("Text"))
-							{
-								String temp = nn.item(j).getFirstChild().getNodeValue();
-								String[] words = temp.split("\n");
-								temp = words[0];
-								for(int k = 1; k < words.length; k++)
-								{
-									if(words[k].length() > 0)
-										temp = temp + " " + words[k];
-								}
-								t.set_text(temp);
-							}
-							else if(nn.item(j).getNodeName().equals("X"))
-								t.set_left(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Y"))
-								t.set_top(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Height"))
-								t.set_height(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Width"))
-								t.set_width(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-
-
-						}
+						tll.add(tl2.get(i));
 					}
-					t.set_bottom(t.get_top() + t.get_height());
-					t.set_lastLineWidth(t.get_width());
-					t.set_lastLineLeft(t.get_left());
-					t.set_type(0);
-					if(!t.get_text().contentEquals(" "))
-						tll.add(t);
 				}
+				tl2.clear();
+				currentSlide = tempSlideID + 1;
 			}
 
-			Comparator<textLine> tlc = new Comparator<textLine>() {
-				public int compare(textLine t1, textLine t2)
-				{
-					if(t1.get_slideID() >= t2.get_slideID())
-						return 1;
-					return -1;
-				}
-			};
+			tl2.add(t);
+		}
 
-			System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
-			Collections.sort(tll, tlc);
-
-			int currentSlideNumNew = 0;
-			int currentSlideNumOriginal = 0;
-			for(int i = 0; i < tll.size(); i++)
+		if(!tl2.isEmpty())
+		{
+			for(int i = tl2.size() - 1; i >= 0; i--)
 			{
-				if(tll.get(i).get_slideID() > currentSlideNumOriginal)
-				{
-					currentSlideNumOriginal = tll.get(i).get_slideID();
-					currentSlideNumNew++;
-					tll.get(i).set_slideID(currentSlideNumNew);
-
-					if(changeBBImageNames)
-					{
-						File original = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumOriginal + ".jpg");
-						File renamed  = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumNew + ".jpg");
-						if(!renamed.exists())
-							original.renameTo(renamed);
-
-						original = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumOriginal + ".jpg");
-						renamed  = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumNew + ".jpg");
-						if(!renamed.exists())
-							original.renameTo(renamed);
-					}
-				}
-				else if(tll.get(i).get_slideID() == currentSlideNumOriginal)
-				{
-					tll.get(i).set_slideID(currentSlideNumNew);
-				}
-				else
-				{
-					System.out.println("Error");
-					tll.remove(i);
-					i--;
-				}
+				tll.add(tl2.get(i));
 			}
 		}
-		else if(OCR_Origin == OCROriginMode.ACM_XML)
+
+		tl2.clear();
+		rs1.close();
+		ps.close();
+		connection.close();
+		
+		return tll;
+	}
+	
+	static ArrayList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id) throws ParserConfigurationException, SAXException, IOException{
+
+		ArrayList<textLine> tll = new ArrayList<textLine>();
+
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		Document doc = builder.parse(new File(workingFolder + lecture_id + "\\recognition\\recognition.xml"));
+
+		Element root = doc.getDocumentElement();
+		NodeList nodes = root.getElementsByTagName("TextObject");
+
+		if (nodes != null && nodes.getLength() > 0)
 		{
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder builder = factory.newDocumentBuilder();
-			Document doc = builder.parse(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\ocr_result_xml\\" + lecture_id + ".xml"));
-
-			Element root = doc.getDocumentElement();
-			NodeList nodes = root.getElementsByTagName("TextObject");
-
-			ArrayList<String> pagePic = new ArrayList<String>();
-			ArrayList<Integer> pageMilisec = new ArrayList<Integer>();
-			File timeFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\" + lecture_id + ".txt");
-			if(timeFile.exists())
+			for (int i = 0; i < nodes.getLength(); i++)
 			{
-				BufferedReader br = new BufferedReader(new FileReader(timeFile));
-				for(String a = br.readLine(); a != null; a = br.readLine())
+				Element textLine = (Element) nodes.item(i);
+				NodeList nn = textLine.getChildNodes();
+				textLine t = new textLine();
+				for (int j = 0; j < nn.getLength(); j++)
 				{
-					String words[] = a.split("\t");
-					for(int i = 0; i < words[1].length(); i++)
+					if (nn.item(j).getNodeType() == Node.ELEMENT_NODE)
 					{
-						if(words[1].charAt(i) == '.')
+						if (nn.item(j).getNodeName().equals("FrameName"))
+							t.set_slideID(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("StartSecond"))
 						{
-							pagePic.add(words[1].substring(0, i));
-							pageMilisec.add( (int) (Double.parseDouble(words[2]) * 1000) - 3600000);
-							break;
+							int temp = Integer.parseInt(nn.item(j).getFirstChild().getNodeValue())*1000 - localTimeZoneOffset;
+							Time ti = new Time(temp);
+							t.set_time(ti);
 						}
+						else if(nn.item(j).getNodeName().equals("Text"))
+						{
+							String temp = nn.item(j).getFirstChild().getNodeValue();
+							String[] words = temp.split("\n");
+							temp = words[0];
+							for(int k = 1; k < words.length; k++)
+							{
+								if(words[k].length() > 0)
+									temp = temp + " " + words[k];
+							}
+							t.set_text(temp);
+						}
+						else if(nn.item(j).getNodeName().equals("X"))
+							t.set_left(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Y"))
+							t.set_top(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Height"))
+							t.set_height(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Width"))
+							t.set_width(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+
+
 					}
 				}
-				br.close();
-			}
-
-			if (nodes != null && nodes.getLength() > 0)
-			{
-				for (int i = 0; i < nodes.getLength(); i++)
-				{
-					Element textLine = (Element) nodes.item(i);
-					NodeList nn = textLine.getChildNodes();
-					textLine t = new textLine();
-					for (int j = 0; j < nn.getLength(); j++)
-					{
-						if (nn.item(j).getNodeType() == Node.ELEMENT_NODE)
-						{
-							if (nn.item(j).getNodeName().equals("FrameName"))
-							{
-								t.set_slideID(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-								for(int k = 0; k < pagePic.size(); k++)
-								{
-									if(pagePic.get(k).contentEquals(nn.item(j).getFirstChild().getNodeValue()))
-									{
-										Time ti = new Time(pageMilisec.get(k));
-										t.set_time(ti);
-										break;
-									}
-								}
-							}
-							else if(nn.item(j).getNodeName().equals("Text"))
-							{
-								String temp = nn.item(j).getFirstChild().getNodeValue();
-								String[] words = temp.split("\n");
-								temp = words[0];
-								for(int k = 1; k < words.length; k++)
-								{
-									if(words[k].length() > 0)
-										temp = temp + " " + words[k];
-								}
-								t.set_text(temp);
-							}
-							else if(nn.item(j).getNodeName().equals("X"))
-								t.set_left(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Y"))
-								t.set_top(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Height"))
-								t.set_height(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-							else if(nn.item(j).getNodeName().equals("Width"))
-								t.set_width(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
-
-
-						}
-					}
-					t.set_bottom(t.get_top() + t.get_height());
-					t.set_lastLineWidth(t.get_width());
-					t.set_lastLineLeft(t.get_left());
-					t.set_type(0);
+				t.set_bottom(t.get_top() + t.get_height());
+				t.set_lastLineWidth(t.get_width());
+				t.set_lastLineLeft(t.get_left());
+				t.set_type(0);
+				if(!t.get_text().contentEquals(" "))
 					tll.add(t);
+			}
+		}
+
+		Comparator<textLine> tlc = new Comparator<textLine>() {
+			public int compare(textLine t1, textLine t2)
+			{
+				if(t1.get_slideID() >= t2.get_slideID())
+					return 1;
+				return -1;
+			}
+		};
+
+		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
+		Collections.sort(tll, tlc);
+
+		int currentSlideNumNew = 0;
+		int currentSlideNumOriginal = 0;
+		for(int i = 0; i < tll.size(); i++)
+		{
+			if(tll.get(i).get_slideID() > currentSlideNumOriginal)
+			{
+				currentSlideNumOriginal = tll.get(i).get_slideID();
+				currentSlideNumNew++;
+				tll.get(i).set_slideID(currentSlideNumNew);
+
+				if(changeBBImageNames)
+				{
+					File original = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumOriginal + ".jpg");
+					File renamed  = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumNew + ".jpg");
+					if(!renamed.exists())
+						original.renameTo(renamed);
+
+					original = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumOriginal + ".jpg");
+					renamed  = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumNew + ".jpg");
+					if(!renamed.exists())
+						original.renameTo(renamed);
 				}
 			}
-
-			Comparator<textLine> tlc = new Comparator<textLine>() {
-				public int compare(textLine t1, textLine t2)
-				{
-					if(t1.get_slideID() >= t2.get_slideID())
-						return 1;
-					return -1;
-				}
-			};
-
-			System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
-			Collections.sort(tll, tlc);
-		}
-		else if(OCR_Origin == OCROriginMode.PDF)
-		{ //PDF input
-			String fileName = workingFolder + lecture_id + "\\slides.pdf";
-
-			pdfParser pp = new pdfParser();
-
-			tll = pp.analyzePDF(fileName);
+			else if(tll.get(i).get_slideID() == currentSlideNumOriginal)
+			{
+				tll.get(i).set_slideID(currentSlideNumNew);
+			}
+			else
+			{
+				System.out.println("Error");
+				tll.remove(i);
+				i--;
+			}
 		}
 		return tll;
+	}
+	
+	static ArrayList<textLine> loadFromACMXML(String lecture_id) throws ParserConfigurationException, SAXException, IOException{
+		ArrayList<textLine> tll = new ArrayList<textLine>();
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		Document doc = builder.parse(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\ocr_result_xml\\" + lecture_id + ".xml"));
+
+		Element root = doc.getDocumentElement();
+		NodeList nodes = root.getElementsByTagName("TextObject");
+
+		ArrayList<String> pagePic = new ArrayList<String>();
+		ArrayList<Integer> pageMilisec = new ArrayList<Integer>();
+		File timeFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\" + lecture_id + ".txt");
+		if(timeFile.exists())
+		{
+			BufferedReader br = new BufferedReader(new FileReader(timeFile));
+			for(String a = br.readLine(); a != null; a = br.readLine())
+			{
+				String words[] = a.split("\t");
+				for(int i = 0; i < words[1].length(); i++)
+				{
+					if(words[1].charAt(i) == '.')
+					{
+						pagePic.add(words[1].substring(0, i));
+						pageMilisec.add( (int) (Double.parseDouble(words[2]) * 1000) - 3600000);
+						break;
+					}
+				}
+			}
+			br.close();
+		}
+
+		if (nodes != null && nodes.getLength() > 0)
+		{
+			for (int i = 0; i < nodes.getLength(); i++)
+			{
+				Element textLine = (Element) nodes.item(i);
+				NodeList nn = textLine.getChildNodes();
+				textLine t = new textLine();
+				for (int j = 0; j < nn.getLength(); j++)
+				{
+					if (nn.item(j).getNodeType() == Node.ELEMENT_NODE)
+					{
+						if (nn.item(j).getNodeName().equals("FrameName"))
+						{
+							t.set_slideID(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+							for(int k = 0; k < pagePic.size(); k++)
+							{
+								if(pagePic.get(k).contentEquals(nn.item(j).getFirstChild().getNodeValue()))
+								{
+									Time ti = new Time(pageMilisec.get(k));
+									t.set_time(ti);
+									break;
+								}
+							}
+						}
+						else if(nn.item(j).getNodeName().equals("Text"))
+						{
+							String temp = nn.item(j).getFirstChild().getNodeValue();
+							String[] words = temp.split("\n");
+							temp = words[0];
+							for(int k = 1; k < words.length; k++)
+							{
+								if(words[k].length() > 0)
+									temp = temp + " " + words[k];
+							}
+							t.set_text(temp);
+						}
+						else if(nn.item(j).getNodeName().equals("X"))
+							t.set_left(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Y"))
+							t.set_top(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Height"))
+							t.set_height(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+						else if(nn.item(j).getNodeName().equals("Width"))
+							t.set_width(Integer.parseInt(nn.item(j).getFirstChild().getNodeValue()));
+
+
+					}
+				}
+				t.set_bottom(t.get_top() + t.get_height());
+				t.set_lastLineWidth(t.get_width());
+				t.set_lastLineLeft(t.get_left());
+				t.set_type(0);
+				tll.add(t);
+			}
+		}
+
+		Comparator<textLine> tlc = new Comparator<textLine>() {
+			public int compare(textLine t1, textLine t2)
+			{
+				if(t1.get_slideID() >= t2.get_slideID())
+					return 1;
+				return -1;
+			}
+		};
+
+		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
+		Collections.sort(tll, tlc);
+		return tll;
+		
+	}
+	
+	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException
+	{
+		if(OCR_Origin == OCROriginMode.mySQL)
+			return loadFromMySQL(lecture_id);
+		else if(OCR_Origin == OCROriginMode.teleTaskXML)
+			return loadFromTeleTaskXML(workingFolder, lecture_id);
+		else if(OCR_Origin == OCROriginMode.ACM_XML)
+			return loadFromACMXML(lecture_id);
+		else if(OCR_Origin == OCROriginMode.PDF) 
+			return new pdfParser().analyzePDF(workingFolder + lecture_id + "\\slides.pdf");
+		
+		return new ArrayList<>();
 	}
 
 	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> fr, String workingFolder, String lecture_id)
