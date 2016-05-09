@@ -7,6 +7,7 @@ import java.io.*;
 
 import javax.imageio.ImageIO;
 
+import helper.Constants;
 import helper.LoggerSingleton;
 
 public class imageProblem {
@@ -15,14 +16,14 @@ public class imageProblem {
 	
 	public void cropTableFromSlide(String lectureID, int slideID, int[] tableRange) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lectureID + "\\thumbnails\\" + slideID + ".jpg"));
+		BufferedImage pic = ImageIO.read(new File(Constants.joinPath(Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
 		
 		int left = tableRange[0] - 5 >= 0 ? tableRange[0] - 5 : 0;
 		int top = tableRange[2] - 5 >= 0 ? tableRange[2] - 5 : 0;
 		int width = tableRange[1] + 5 > pic.getWidth() ? pic.getWidth() - tableRange[0] : tableRange[1] - tableRange[0] + 10;
 		int height = tableRange[3] + 5 > pic.getHeight() ? pic.getHeight() - tableRange[2] : tableRange[3] - tableRange[2] + 10;
 		
-		File dir = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\TOG\\" + lectureID);
+		File dir = new File(Constants.joinPath(Constants.DEFAULT_TOG_FOLDER, lectureID));
 		if(!dir.exists())
 			dir.mkdir();
 		
@@ -36,7 +37,10 @@ public class imageProblem {
 		g.drawRect(left-3, top-3, width+6, height+6);
 		g.dispose();
 		
-		File outputfile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\TOG\\" + lectureID + "\\" + lectureID + "-" + slideID + "-" + tableRange[0] + "-" + tableRange[2] + ".jpg");
+		File outputfile = new File(Constants.joinPath(
+				Constants.DEFAULT_TOG_FOLDER, 
+				lectureID, 
+				String.format("%s-%s-%s-%s.jpg", lectureID, slideID, tableRange[0], tableRange[2])));
 		ImageIO.write(pic, "jpg", outputfile);
 		
 		return;
@@ -44,13 +48,15 @@ public class imageProblem {
 	
 	public void runTessract(String lectureID, int slideID) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\" + lectureID + "\\thumbnails\\" + slideID + ".jpg"));
-		File outputfile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\input.jpg");
+		BufferedImage pic = ImageIO.read(new File(Constants.joinPath(
+				Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
+		File outputfile = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "input.jpg"));
 		ImageIO.write(pic, "jpg", outputfile);
 		
 		//LoggerSingleton.info("here");
-		ProcessBuilder pb = new ProcessBuilder("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Tesseract-OCR-executable\\run.bat");
-		pb.directory(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Tesseract-OCR-executable\\"));
+		File tessFolder = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Tesseract-OCR-executable"));
+		ProcessBuilder pb = new ProcessBuilder(Constants.joinPath(tessFolder.getAbsolutePath(), "run.bat"));
+		pb.directory(tessFolder);
 		Process p = pb.start();
 		int isFinished = -1;
 		try {
@@ -63,20 +69,20 @@ public class imageProblem {
 		p.destroy();
 		//LoggerSingleton.info("there");
 		
-		pic = ImageIO.read(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\output.jpg"));
-		File dir = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Result\\" + lectureID);
-		if(!dir.exists())
-			dir.mkdir();
-		outputfile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Result\\" + lectureID + "\\" + slideID + ".jpg");
+		pic = ImageIO.read(new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "output.jpg")));
+		File resultsDir = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Result", lectureID));
+		if(!resultsDir.exists())
+			resultsDir.mkdir();
+		outputfile = new File(Constants.joinPath(resultsDir.getAbsolutePath(), slideID + ".jpg"));
 		ImageIO.write(pic, "jpg", outputfile);
 		
-		File iFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Tesseract-OCR-executable\\tess-table.txt");
+		File iFile = new File(Constants.joinPath(tessFolder.getAbsolutePath(), "tess-table.txt"));
 		if(iFile.exists())
 		{
 			BufferedReader br = new BufferedReader(new FileReader(iFile));
 			for(String a = br.readLine(); a != null; a = br.readLine())
 			{
-				File oFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Result\\" + lectureID + "\\stats.txt");
+				File oFile = new File(Constants.joinPath(resultsDir.getAbsolutePath(), "stats.txt"));
 				BufferedWriter output = new BufferedWriter(new FileWriter(oFile, true));										
 				output.append(slideID + ":\t" + a);
 				output.newLine();
