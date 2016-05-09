@@ -33,6 +33,7 @@ buildNumber.properties
 *.mp4
 
 ####### RESULTS
-out/
+out/*
+tog_stats.txt
 
 
