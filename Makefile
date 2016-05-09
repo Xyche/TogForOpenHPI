@@ -5,8 +5,8 @@ run:
 	$(MVN_Q) exec:java
 
 compile:
-	$(MVN) compile
+	$(MVN) package
 
 build:
-	$(MVN) compile
+	$(MVN) package
 
