@@ -18,21 +18,26 @@ import helper.OCROriginMode;
 
 public class runTogForOpenHPI {
 
-	private static final int pageWidth = 1024;
-	private static final int pageHeight = 768;
 	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
-	private static final boolean changeBBImageNames = false;
 
 	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException {
 		Options opt = ArgumentParser.defineCLI();
 		CommandLine cmd = ArgumentParser.parseCLI(opt, args);
 		if(cmd == null) return;
 
-		final OCROriginMode OCR_Origin = OCROriginMode.PDF;
+		final boolean changeBBImageNames = cmd.hasOption(ArgumentParser.CHANGE_NAMES_KEY);
+		String modeString = cmd.getOptionValue(ArgumentParser.MODE_KEY, String.valueOf(OCROriginMode.teleTaskXML.ordinal()));
+		final OCROriginMode OCR_Origin = OCROriginMode.parseFromOption(modeString);
+		
+		final int pageWidth = ArgumentParser.width(cmd), pageHeight = ArgumentParser.height(cmd);
 
-		boolean havePPTX = false;
-		boolean havePDF = true;
-		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY, "6670");
+		boolean havePDF = cmd.hasOption(ArgumentParser.PDF_KEY);
+		boolean havePPTX = cmd.hasOption(ArgumentParser.PPTX_KEY);
+		if(havePDF == havePPTX){
+			havePDF = true;
+			havePDF = false;
+		}
+		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY);
 		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Constants.DEFAULT_WORKING_DIR);
 		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY, Constants.joinPath(Constants.DEFAULT_WORKING_DIR, lecture_id + ".log")));
 
@@ -340,14 +345,14 @@ public class runTogForOpenHPI {
 				continue;
 
 
-			String temp = "";
-
-			for(int j = 0; j <= finalResults.get(i).get_hierarchy(); j++)
-			{
-				LoggerSingleton.info("--");
-				if(j > 0)
-					temp += "\t";
-			}
+//			String temp = "";
+//
+//			for(int j = 0; j <= finalResults.get(i).get_hierarchy(); j++)
+//			{
+//				LoggerSingleton.info("--");
+//				if(j > 0)
+//					temp += "\t";
+//			}
 
 			if(finalResults.get(i).get_child() == 0)
 			{
@@ -363,8 +368,8 @@ public class runTogForOpenHPI {
 
 		LoggerSingleton.info("-------------------------------------------------------");
 
-		ArrayList<textOutline> segments = new ArrayList<textOutline>();
-		segments = autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
+//		ArrayList<textOutline> segments = new ArrayList<textOutline>();
+//		segments = autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
 
 	}
 
@@ -442,7 +447,7 @@ public class runTogForOpenHPI {
 		return tll;
 	}
 
-	static ArrayList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id) throws ParserConfigurationException, SAXException, IOException{
+	static ArrayList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id, boolean changeBBImageNames) throws ParserConfigurationException, SAXException, IOException{
 
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 
@@ -656,12 +661,19 @@ public class runTogForOpenHPI {
 
 	}
 
-	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
+	public static ArrayList<textLine> loadOcrResults(
+			OCROriginMode OCR_Origin, 
+			String workingFolder, 
+			String lecture_id, 
+			int localTimeZoneOffset, boolean changeBBImageNames) 
+					throws SQLException, ParserConfigurationException, 
+						SAXException, IOException, InstantiationException, 
+						IllegalAccessException, ClassNotFoundException
 	{
 		if(OCR_Origin == OCROriginMode.mySQL)
 			return loadFromMySQL(lecture_id);
 		else if(OCR_Origin == OCROriginMode.teleTaskXML)
-			return loadFromTeleTaskXML(workingFolder, lecture_id);
+			return loadFromTeleTaskXML(workingFolder, lecture_id, changeBBImageNames);
 		else if(OCR_Origin == OCROriginMode.ACM_XML)
 			return loadFromACMXML(lecture_id);
 		else if(OCR_Origin == OCROriginMode.PDF)

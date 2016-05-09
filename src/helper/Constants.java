@@ -5,6 +5,8 @@ import java.io.File;
 import com.google.common.base.Joiner;
 
 public final class Constants {
+	
+	public static final int DEFAULT_WIDTH = 1024, DEFAULT_HEIGHT = 768;
 
 	public static final String DEFAULT_SLIDES_PPTX = "slides.pptx";
 	public static final String DEFAULT_SLIDES_PDF = "slides.pdf";
