@@ -2,96 +2,71 @@ import java.io.*;
 import java.sql.*;
 import java.util.*;
 
+import org.apache.commons.cli.*;
+
 import javax.xml.parsers.*;
 
-import org.apache.commons.cli.*;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
 import sharedMethods.algorithmInterface;
 import dataStructure.*;
+import helper.ArgumentParser;
+import helper.Constants;
+import helper.LoggerSingleton;
+import helper.OCROriginMode;
 
 public class runTogForOpenHPI {
 
-	
-	
 	private static final int pageWidth = 1024;
 	private static final int pageHeight = 768;
 	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
 	private static final boolean changeBBImageNames = false;
-	
-	public static PrintStream setUpLogger(String loggerFile) throws FileNotFoundException{
 
-		File newFile = new File(loggerFile);
-		if(newFile.exists()) newFile.delete();
-
-		PrintStream out = new PrintStream(new BufferedOutputStream(new FileOutputStream(newFile, true)));
-
-		System.setOut(out);
-		System.setErr(out);
-		
-		return out;
-
-	}
-	
-	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
+	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException {
 		Options opt = ArgumentParser.defineCLI();
 		CommandLine cmd = ArgumentParser.parseCLI(opt, args);
 		if(cmd == null) return;
-//		
-//		System.out.println("Here");
-//	}
-//
-//	public static void old_main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException {
+
 		final OCROriginMode OCR_Origin = OCROriginMode.PDF;
 
 		boolean havePPTX = false;
 		boolean havePDF = true;
 		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY, "6670");
-		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\_OCR_result\\");
-		PrintStream console = System.out;
-		PrintStream out = setUpLogger(cmd.getOptionValue(ArgumentParser.LOGGER_KEY, "C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\tempOutput_" + lecture_id + ".txt"));
-		
-		
+		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Constants.DEFAULT_WORKING_DIR);
+		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY, Constants.joinPath(Constants.DEFAULT_WORKING_DIR, lecture_id + ".log")));
+
+
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		tll = loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
-		System.out.println("< STEP 1: Loading from Database >");
+		LoggerSingleton.info("< STEP 1: Loading from Database >");
 		for(int i = 0; i < tll.size(); i++) {
 			textLine t = tll.get(i);
-			System.out.print(t.get_slideID() + "  ");
-			System.out.print(t.get_type() + "  ");
-			System.out.print(t.get_text() + "  ");
-			System.out.print(t.get_top() + "  ");
-			System.out.print(t.get_left() + "  ");
-			System.out.print(t.get_width() + "  ");
-			System.out.print(t.get_height() + "  ");
-			System.out.println(t.get_time());
+			LoggerSingleton.info(t.get_slideID() + "  ");
+			LoggerSingleton.info(t.get_type() + "  ");
+			LoggerSingleton.info(t.get_text() + "  ");
+			LoggerSingleton.info(t.get_top() + "  ");
+			LoggerSingleton.info(t.get_left() + "  ");
+			LoggerSingleton.info(t.get_width() + "  ");
+			LoggerSingleton.info(t.get_height() + "  ");
+			LoggerSingleton.info(t.get_time());
 		}
-		System.out.println();
-		System.out.println();
-		//System.out.println("$$$$\tOCR text-lines:\t" + tll.size());
+		//LoggerSingleton.info("$$$$\tOCR text-lines:\t" + tll.size());
 
-		outlineGenerator og = new outlineGenerator(pageWidth, pageHeight, lecture_id);
+		outlineGenerator og = new outlineGenerator(pageWidth, pageHeight, workingFolder, lecture_id);
 		ArrayList<textOutline> finalResults = new ArrayList<textOutline>();
 
 
 		if(havePPTX)
-		{
-			String fileName = workingFolder + lecture_id + "\\slides.pptx";
-			finalResults = og.generateOutlineWithPPTX(tll, fileName);
-		}
-		else if(havePDF)
-		{
+			finalResults = og.generateOutlineWithPPTX(tll, Constants.joinPath(workingFolder, lecture_id, Constants.DEFAULT_SLIDES_PPTX));
+		else if(havePDF){
 			ArrayList<textLine> tll_pdf = new ArrayList<textLine>();
 			tll_pdf = loadOcrResults(OCROriginMode.PDF, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 			finalResults = og.generateOutlineWithPDF(tll, tll_pdf);
 			tll_pdf.clear();
-		}
-		else
-		{
+		} else 
 			finalResults = og.generateOutline(tll);
-		}
 		tll.clear();
 
 		int count1=0, count2=0, count1low=0, count2low=0, count1dot=0, count2dot=0;
@@ -139,16 +114,13 @@ public class runTogForOpenHPI {
 		else
 			og.set_haveSignBeforeSubtopic(false);
 
-		System.out.println();
-		System.out.println("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
-		System.out.println("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
-		System.out.println("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
-		System.out.println();
+		LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
+		LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
+		LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
 
-		System.out.println("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
-		System.out.println("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
-		System.out.println("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
-		System.out.println();
+		LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
+		LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
+		LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
 
 		// To do: a self-check system for adaptive round
 		boolean havingAdaptiveDifference = true;
@@ -174,18 +146,13 @@ public class runTogForOpenHPI {
 				lastRoundGaps.add(temp);
 			}
 
-			System.out.println();
-			System.out.println("------------------ADAPTIVE ROUND " + roundNum + "---------------------------");
-			System.out.println();
+			LoggerSingleton.info("------------------ADAPTIVE ROUND " + roundNum + "---------------------------");
 
 			// Do the adaptive round
 			tll = loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, false);
 
 			if(havePPTX)
-			{
-				String fileName = workingFolder + lecture_id + "\\slides.pptx";
-				finalResults = og.generateOutlineWithPPTX(tll, fileName);
-			}
+				finalResults = og.generateOutlineWithPPTX(tll, Constants.joinPath(workingFolder, lecture_id, Constants.DEFAULT_SLIDES_PPTX));
 			else if(havePDF)
 			{
 				ArrayList<textLine> tll_pdf = new ArrayList<textLine>();
@@ -195,9 +162,7 @@ public class runTogForOpenHPI {
 				tll_pdf.clear();
 			}
 			else
-			{
 				finalResults = og.generateOutline(tll);
-			}
 			tll.clear();
 
 			// Update the status of "LowCaseStart" and "HavingDot" for this round
@@ -247,11 +212,9 @@ public class runTogForOpenHPI {
 			else
 				og.set_beginWithLowCaseLetter(false);
 
-			System.out.println();
-			System.out.println("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
-			System.out.println("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
-			System.out.println("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
-			System.out.println();
+			LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
+			LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
+			LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
 
 			if(!lastRoundBeginningDot)
 			{
@@ -260,16 +223,14 @@ public class runTogForOpenHPI {
 				else
 					og.set_haveSignBeforeSubtopic(false);
 
-				System.out.println("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
-				System.out.println("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
-				System.out.println("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
-				System.out.println();
+				LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
+				LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
+				LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
 			}
 			else
 			{
 				og.set_haveSignBeforeSubtopic(true);
-				System.out.println("All dots have been removed in this round, we must keep this status as TRUE.");
-				System.out.println();
+				LoggerSingleton.info("All dots have been removed in this round, we must keep this status as TRUE.");
 			}
 
 
@@ -279,19 +240,19 @@ public class runTogForOpenHPI {
 			if(og.is_beginWithLowCaseLetter() != lastRoundLowCaseStart)
 			{
 				havingAdaptiveDifference = true;
-				System.out.println("LowCaseStart status changed!!!");
+				LoggerSingleton.info("LowCaseStart status changed!!!");
 			}
 
 			if(og.is_haveSignBeforeSubtopic() != lastRoundBeginningDot)
 			{
 				havingAdaptiveDifference = true;
-				System.out.println("BeginningDot status changed!!!");
+				LoggerSingleton.info("BeginningDot status changed!!!");
 			}
 
 			if(og.get_potentialTitleArea().size() != lastRoundTableAreas.size())
 			{
 				havingAdaptiveDifference = true;
-				System.out.println("Potential Title Area changed!!!");
+				LoggerSingleton.info("Potential Title Area changed!!!");
 			}
 			else
 			{
@@ -312,7 +273,7 @@ public class runTogForOpenHPI {
 					if(!match)
 					{
 						havingAdaptiveDifference = true;
-						System.out.println("Potential Title Area changed!!!");
+						LoggerSingleton.info("Potential Title Area changed!!!");
 						break;
 					}
 
@@ -322,7 +283,7 @@ public class runTogForOpenHPI {
 			if(og.get_potentialHierarchicalGap().size() != lastRoundGaps.size())
 			{
 				havingAdaptiveDifference = true;
-				System.out.println("Hierarchical Gaps changed!!!");
+				LoggerSingleton.info("Hierarchical Gaps changed!!!");
 			}
 			else
 			{
@@ -342,7 +303,7 @@ public class runTogForOpenHPI {
 					if(!match)
 					{
 						havingAdaptiveDifference = true;
-						System.out.println("Hierarchical Gaps changed!!!");
+						LoggerSingleton.info("Hierarchical Gaps changed!!!");
 						break;
 					}
 				}
@@ -350,31 +311,25 @@ public class runTogForOpenHPI {
 
 		}
 		/*
-		System.out.println();
-		System.out.println("------------------ADAPTIVE ROUND---------------------------");
-		System.out.println();
+		LoggerSingleton.info();
+		LoggerSingleton.info("------------------ADAPTIVE ROUND---------------------------");
+		LoggerSingleton.info();
 
 		tll = loadOcrResults(OCR_Origin, lecture_id, localTimeZoneOffset, false);
 		finalResults = og.generateOutline(tll);
 		*/
 		/* show result */
-		System.out.println();
-		System.out.println("< Final Results: >");
-		System.out.println();
+		LoggerSingleton.info("< Final Results: >");
 
-		File newFile = new File(workingFolder + lecture_id + "\\outline");
+		File newFile = new File(Constants.joinPath(workingFolder, lecture_id, "outline"));
 		if(newFile.exists()) newFile.delete();
 
 		for(int i = 0; i < finalResults.size(); i++)
 		{
-			try {
-				BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));
-				output.append(finalResults.get(i).get_hierarchy() + "\t" + finalResults.get(i).get_child() + "\t" + finalResults.get(i).get_text());
-				output.newLine();
-				output.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));
+			output.append(finalResults.get(i).get_hierarchy() + "\t" + finalResults.get(i).get_child() + "\t" + finalResults.get(i).get_text());
+			output.newLine();
+			output.close();
 
 			// Control of hierarchy inside single page
 			if(finalResults.get(i).get_child() > 2)
@@ -389,16 +344,16 @@ public class runTogForOpenHPI {
 
 			for(int j = 0; j <= finalResults.get(i).get_hierarchy(); j++)
 			{
-				System.out.print("--");
+				LoggerSingleton.info("--");
 				if(j > 0)
 					temp += "\t";
 			}
 
 			if(finalResults.get(i).get_child() == 0)
 			{
-				System.out.print("$$ ");
+				LoggerSingleton.info("$$ ");
 			}
-			System.out.println(finalResults.get(i).get_text() + " " + finalResults.get(i).get_time());
+			LoggerSingleton.info(finalResults.get(i).get_text() + " " + finalResults.get(i).get_time());
 		}
 
 		/* Until now, the content structure generation process has been finished!
@@ -406,29 +361,21 @@ public class runTogForOpenHPI {
 		 * Especially for ACM Multimedia 2013 Grand Challenge.
 		 */
 
-		System.out.println();
-		System.out.println("-------------------------------------------------------");
-		System.out.println();
+		LoggerSingleton.info("-------------------------------------------------------");
 
 		ArrayList<textOutline> segments = new ArrayList<textOutline>();
 		segments = autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
 
-		out.close();
-		System.setOut(console);
 	}
 
-	static ArrayList<textLine> loadFromMySQL(String lecture_id) throws SQLException{
+	static ArrayList<textLine> loadFromMySQL(String lecture_id) throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException{
 
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-		
+
 		String url = "jdbc:mysql://localhost/ak?user=Xyche&password=123&useUnicode=true&characterEncoding=8859_1";
 		String sql = "select t.*, l.start from ocrtool_textline as t, ocrtool_lectureslide as l where t.lectureSlide_id = l.id and l.lecture_id = " + lecture_id + " order by id";
-		try {
-			Class.forName("com.mysql.jdbc.Driver").newInstance();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		Class.forName("com.mysql.jdbc.Driver").newInstance();
 
 		Connection connection = DriverManager.getConnection(url);
 		PreparedStatement ps = null;
@@ -491,17 +438,17 @@ public class runTogForOpenHPI {
 		rs1.close();
 		ps.close();
 		connection.close();
-		
+
 		return tll;
 	}
-	
+
 	static ArrayList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id) throws ParserConfigurationException, SAXException, IOException{
 
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
-		Document doc = builder.parse(new File(workingFolder + lecture_id + "\\recognition\\recognition.xml"));
+		Document doc = builder.parse(new File(Constants.joinPath(workingFolder, lecture_id, "recognition", "recognition.xml")));
 
 		Element root = doc.getDocumentElement();
 		NodeList nodes = root.getElementsByTagName("TextObject");
@@ -582,13 +529,13 @@ public class runTogForOpenHPI {
 
 				if(changeBBImageNames)
 				{
-					File original = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumOriginal + ".jpg");
-					File renamed  = new File(workingFolder + lecture_id + "\\thumbnails\\" + currentSlideNumNew + ".jpg");
+					File original = new File(Constants.joinPath(workingFolder, lecture_id, "thumbnails", currentSlideNumOriginal + ".jpg"));
+					File renamed  = new File(Constants.joinPath(workingFolder, lecture_id, "thumbnails", currentSlideNumNew + ".jpg"));
 					if(!renamed.exists())
 						original.renameTo(renamed);
 
-					original = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumOriginal + ".jpg");
-					renamed  = new File(workingFolder + lecture_id + "\\tmp\\BBImages\\" + currentSlideNumNew + ".jpg");
+					original = new File(Constants.joinPath(workingFolder, lecture_id, "tmp" + "BBImages", currentSlideNumOriginal + ".jpg"));
+					renamed  = new File(Constants.joinPath(workingFolder, lecture_id, "tmp" + "BBImages", currentSlideNumNew + ".jpg"));
 					if(!renamed.exists())
 						original.renameTo(renamed);
 				}
@@ -599,26 +546,26 @@ public class runTogForOpenHPI {
 			}
 			else
 			{
-				System.out.println("Error");
+				LoggerSingleton.info("Error");
 				tll.remove(i);
 				i--;
 			}
 		}
 		return tll;
 	}
-	
+
 	static ArrayList<textLine> loadFromACMXML(String lecture_id) throws ParserConfigurationException, SAXException, IOException{
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
-		Document doc = builder.parse(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\ocr_result_xml\\" + lecture_id + ".xml"));
+		Document doc = builder.parse(new File(Constants.joinPath(Constants.DEFAULT_ACM_DIR, "ocr_result_xml", lecture_id + ".xml")));
 
 		Element root = doc.getDocumentElement();
 		NodeList nodes = root.getElementsByTagName("TextObject");
 
 		ArrayList<String> pagePic = new ArrayList<String>();
 		ArrayList<Integer> pageMilisec = new ArrayList<Integer>();
-		File timeFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\ACM2013\\Dataset_public_OCR_files\\" + lecture_id + ".txt");
+		File timeFile = new File(Constants.joinPath(Constants.DEFAULT_ACM_DIR, lecture_id + ".txt"));
 		if(timeFile.exists())
 		{
 			BufferedReader br = new BufferedReader(new FileReader(timeFile));
@@ -706,10 +653,10 @@ public class runTogForOpenHPI {
 		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
 		Collections.sort(tll, tlc);
 		return tll;
-		
+
 	}
-	
-	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException
+
+	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id, int localTimeZoneOffset, boolean changeBBImageNames) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException
 	{
 		if(OCR_Origin == OCROriginMode.mySQL)
 			return loadFromMySQL(lecture_id);
@@ -717,13 +664,13 @@ public class runTogForOpenHPI {
 			return loadFromTeleTaskXML(workingFolder, lecture_id);
 		else if(OCR_Origin == OCROriginMode.ACM_XML)
 			return loadFromACMXML(lecture_id);
-		else if(OCR_Origin == OCROriginMode.PDF) 
-			return new pdfParser().analyzePDF(workingFolder + lecture_id + "\\slides.pdf");
-		
+		else if(OCR_Origin == OCROriginMode.PDF)
+			return new pdfParser().analyzePDF(Constants.joinPath(workingFolder, lecture_id, Constants.DEFAULT_SLIDES_PDF));
+
 		return new ArrayList<>();
 	}
 
-	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> fr, String workingFolder, String lecture_id)
+	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> fr, String workingFolder, String lecture_id) throws IOException
 	{
 		ArrayList<textOutline> onlyTitles = new ArrayList<textOutline>();
 
@@ -782,7 +729,7 @@ public class runTogForOpenHPI {
 		if(haveSegment)
 		{
 			averageSegLength = averageSegLength > totalTime/5 ? averageSegLength : totalTime/5;
-			System.out.println(averageSegLength);
+			LoggerSingleton.info(averageSegLength);
 			int lastPos = -1;
 			int currentPos = 0;
 			int currentSum = 0;
@@ -845,7 +792,7 @@ public class runTogForOpenHPI {
 		else
 		{
 			averageSegLength = 180 > totalTime/5 ? 180 : totalTime/5;
-			System.out.println(averageSegLength);
+			LoggerSingleton.info(averageSegLength);
 			int currentPos = 0;
 			int currentSum = 0;
 			for(int i = 0; i < onlyTitles.size(); i++)
@@ -880,7 +827,7 @@ public class runTogForOpenHPI {
 
 		count = 0;
 		int sum = 0;
-		File newFile = new File(workingFolder + lecture_id + "\\seg");
+		File newFile = new File(Constants.joinPath(workingFolder, lecture_id, "seg"));
 		if(newFile.exists())
 		{
 			newFile.delete();
@@ -901,39 +848,35 @@ public class runTogForOpenHPI {
 							longestPos = j;
 						}
 					}
-				System.out.println();
-				System.out.println("< Segment '" + onlyTitles.get(longestPos).get_text() + "' > Duration: " + ai.secondsToTime(onlyTitles.get(i).get_childEnd()));
+				LoggerSingleton.info("< Segment '" + onlyTitles.get(longestPos).get_text() + "' > Duration: " + ai.secondsToTime(onlyTitles.get(i).get_childEnd()));
 
-				try {
-					BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));
-					output.append(onlyTitles.get(i).get_time().toString() + "\t");
-					if(i < onlyTitles.size() - 1)
-					{
-						if(onlyTitles.get(i+1).get_hierarchy() == 0)
-							output.append("<casual>");
-						else
-							output.append("<logical>");
-					}
+				BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));
+				output.append(onlyTitles.get(i).get_time().toString() + "\t");
+				if(i < onlyTitles.size() - 1)
+				{
+					if(onlyTitles.get(i+1).get_hierarchy() == 0)
+						output.append("<casual>");
 					else
-						output.append("<ending>");
-					output.append("\t" + onlyTitles.get(longestPos).get_text());
-					output.newLine();
-					output.close();
-				} catch (IOException e) {
-					e.printStackTrace();
+						output.append("<logical>");
 				}
+				else
+					output.append("<ending>");
+				output.append("\t" + onlyTitles.get(longestPos).get_text());
+				output.newLine();
+				output.close();
+
 
 				count++;
 				sum += onlyTitles.get(i).get_childEnd();
 			}
 
 			for(int j = 0; j <= onlyTitles.get(i).get_hierarchy(); j++)
-				System.out.print("--");
+				LoggerSingleton.info("--");
 
 
-			System.out.println(onlyTitles.get(i).get_text() + " " + onlyTitles.get(i).get_time());
+			LoggerSingleton.info(onlyTitles.get(i).get_text() + " " + onlyTitles.get(i).get_time());
 			if(i == onlyTitles.size() - 1)
-				System.out.println('\n' + "Average Segment-Length: " + ai.secondsToTime(sum/count));
+				LoggerSingleton.info('\n' + "Average Segment-Length: " + ai.secondsToTime(sum/count));
 		}
 
 

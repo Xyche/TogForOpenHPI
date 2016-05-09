@@ -282,7 +282,7 @@ public class sameWords {
 			{
 				if(a.charAt(i) < 'Z' && a.charAt(i) > 'A')
 				{
-					//System.out.println("####" + a.charAt(i) + i);
+					//LoggerSingleton.info("####" + a.charAt(i) + i);
 					return true;
 				}
 			}

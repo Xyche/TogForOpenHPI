@@ -1,3 +1,4 @@
+package helper;
 
 public enum OCROriginMode {
 	/*

@@ -1,16 +1,20 @@
 package dataStructure;
 
 import java.util.*;
-import java.io.*;
-import java.sql.*;
+
+import helper.Constants;
+import helper.LoggerSingleton;
 import sharedMethods.algorithmInterface;
 
+import java.io.*;
+import java.sql.*;
+
 public class slidePage {
-	
+
 	public slidePage(){}
-	
+
 	public slidePage(int pageNum, int pageType, String title, int hierarchy, ArrayList<textOutline> list, int pageWidth, int pageHeight) {
-		//This constructor will be used for a prepared page 
+		//This constructor will be used for a prepared page
 		this.set_PageNum(pageNum);
 		this.set_pageType(pageType);
 		this.set_title(title);
@@ -19,31 +23,31 @@ public class slidePage {
 		this.set_pageWidth(pageWidth);
 		this.set_pageHeight(pageHeight);
 	}
-	
 
-	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) {
+
+	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) throws IOException {
 		//This constructor will be used for a raw page: common use
-		
+
 		this.set_pageWidth(pageWidth);
 		this.set_pageHeight(pageHeight);
 		double wp = (double)pageWidth / 1024;
 		double hp = (double)pageHeight / 768;
 		this._titleLocation[0] = pageWidth;
 		this._titleLocation[2] = pageHeight;
-		
+
 		if(list.size() == 0)
 		{
-			System.out.println("Empty List, cannot do the slidePage initialization...");
+			LoggerSingleton.info("Empty List, cannot do the slidePage initialization...");
 			return ;
 		}
-		
+
 		// Sort split textlines in same row
-		
+
 		for(int i = 0; i < list.size(); i++)
 		{
 			if(i == list.size() - 1)
 				break;
-			
+
 			int j;
 			for(j = i + 1; j < list.size(); j++)
 			{
@@ -52,7 +56,7 @@ public class slidePage {
 				else
 					break;
 			}
-			
+
 			for(int x = i; x < j; x++)
 				for(int y = x + 1; y < j; y++)
 				{
@@ -64,9 +68,9 @@ public class slidePage {
 					}
 				}
 		}
-		
-		//In adaptive round, deleting potential extra signs before subtopics in the beginning		
-		
+
+		//In adaptive round, deleting potential extra signs before subtopics in the beginning
+
 		if(extraSignStart)
 		{
 			for(int i = 0; i < list.size(); i++)
@@ -84,7 +88,7 @@ public class slidePage {
 							if(list.get(i).get_text().charAt(0) == 'a' || list.get(i).get_text().charAt(0) == 'A')
 								if(!lowCaseStart && list.get(i).get_text().charAt(2) >= 'a' && list.get(i).get_text().charAt(2) <= 'z')
 									continue;
-							
+
 							textLine t = list.get(i);
 							String temp = t.get_text().substring(2);
 							int diff = 2 * t.get_width() / t.get_text().length();
@@ -103,15 +107,15 @@ public class slidePage {
 			{
 				for(int i = 0; i < list.size(); i++)
 				{
-					System.out.println(list.get(i).get_left() + "  " + list.get(i).get_width() + "  " + list.get(i).get_top() + "  " + list.get(i).get_text());
+					LoggerSingleton.info(list.get(i).get_left() + "  " + list.get(i).get_width() + "  " + list.get(i).get_top() + "  " + list.get(i).get_text());
 				}
 			}*/
 		}
-		
+
 		/*First, 'sign' useless texts: those cannot be recognized or with several lines binded(too high),
 		* and repair those partly useless texts. And all these signed textLines will be deleted:
 		* before create textOutlines and after seek a title.
-		* 
+		*
 		* All the texts will be first recursively repaired until there's nothing to change
 		* and then the auto-combined text lines will also be ruled out
 		* Finally deleted all those #NoUseString# after set the page number*/
@@ -119,7 +123,7 @@ public class slidePage {
 		for(int i = 0; i < list.size(); i++)
 		{
 			textHeightAverage += (double)list.get(i).get_height();
-			
+
 			String lastVersion = "";
 			while(!lastVersion.contentEquals(list.get(i).get_text()))
 			{
@@ -127,17 +131,17 @@ public class slidePage {
 				list.get(i).repair();
 			}
 		}
-		
+
 		textHeightAverage /= list.size();
-		
+
 		//Second, set page number: all texts should be with one single same number
 		set_PageNum(list.get(0).get_slideID());
 		set_startTime(list.get(0).get_time());
-		
+
 		//Here make a sign to those 'too large' or 'too small' text, but temporarily retain them
 		for(int i = 0; i < list.size(); i++)
 		{
-			if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) || 
+			if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) ||
 				( list.get(i).get_height() >= textHeightAverage * 4 && list.get(i).get_height() >= 35*hp ) )
 			{
 				//list.get(i).set_text("#NoUseString#");
@@ -148,27 +152,27 @@ public class slidePage {
 			else if(list.get(i).get_height() <= 10*hp)
 				list.get(i).set_type(-3);
 		}
-		
-		
-		
+
+
+
 		//Next, find the title from texts and delete the textlines for title
 		ArrayList<Integer> textForTitle = seekTitleWithPTA(list, potentialTitleArea);
 		for(int i = textForTitle.size()-1; i >= 0 ; i--)
-		{	
+		{
 			int j = textForTitle.get(i);
-			list.remove(j);			
+			list.remove(j);
 		}
-		
+
 		//Now, DELETE those #NoUseString# based on content
 		for(int i = list.size() - 1; i >= 0; i--)
 		{
 			if(list.get(i).get_type() == -1)
 				list.remove(i);
 		}
-		
+
 		//Detect table
 		ArrayList<int[]> allTableArea = detectTable(list, wp, hp, lectureID);
-		
+
 		if(allTableArea.size() >= 1)
 		{
 			for(int i = 0; i < allTableArea.size(); i++)
@@ -177,9 +181,9 @@ public class slidePage {
 				for(int j = list.size()-1; j >= 0; j--)
 					if(list.get(j).isInside(allTableArea.get(i)))
 						list.remove(j);
-			}				
+			}
 		}
-		
+
 		/*
 		//run Tesseract table detection program
 		algorithmInterface ai = new algorithmInterface();
@@ -191,36 +195,36 @@ public class slidePage {
 			if(list.get(i).get_type() == -2)
 				list.remove(i);
 		}
-		
+
 		//Next, load those text left
 		loadTextInHierarchyAdaptively(list, Gaps, lowCaseStart, extraSignStart);
-		
-		
+
+
 		//Finally, judge whether most of the texts inside the slide included in the 3-level system.
 		isSlideWellOrganized();
 	}
-	
-	
+
+
 	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight) {
 		//This constructor will be used for a raw page: common use
-		
+
 		this.set_pageWidth(pageWidth);
 		this.set_pageHeight(pageHeight);
 		double wp = (double)pageWidth / 1024;
 		double hp = (double)pageHeight / 768;
 		this._titleLocation[0] = pageWidth;
 		this._titleLocation[2] = pageHeight;
-		
+
 		if(list.size() == 0)
 		{
-			System.out.println("Empty List, cannot do the slidePage initialization...");
+			LoggerSingleton.info("Empty List, cannot do the slidePage initialization...");
 			return ;
 		}
-		
+
 		/*First, 'sign' useless texts: those cannot be recognized or with several lines binded(too high),
 		* and repair those partly useless texts. And all these signed textLines will be deleted:
 		* before create textOutlines and after seek a title.
-		* 
+		*
 		* All the texts will be first recursively repaired until there's nothing to change
 		* and then the auto-combined text lines will also be ruled out
 		* Finally deleted all those #NoUseString# after set the page number*/
@@ -235,11 +239,11 @@ public class slidePage {
 				list.get(i).repair();
 			}
 		}
-		
+
 		textHeightAverage /= list.size();
 		for(int i = 0; i < list.size(); i++)
 		{
-			if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) || 
+			if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) ||
 				( list.get(i).get_height() >= textHeightAverage * 3 && list.get(i).get_height() >= 35*hp ) )
 			{
 				list.get(i).set_text("#NoUseString#");
@@ -251,37 +255,37 @@ public class slidePage {
 				list.get(i).set_type(-2);
 			}
 		}
-		
+
 		//Second, set page number: all texts should be with one single same number
 		set_PageNum(list.get(0).get_slideID());
 		set_startTime(list.get(0).get_time());
-		
+
 		//Third, find the title from texts and delete the textlines for title
 		ArrayList<Integer> textForTitle = seekTitle(list);
 		for(int i = textForTitle.size()-1; i >= 0 ; i--)
-		{	
+		{
 			int j = textForTitle.get(i);
-			list.remove(j);			
+			list.remove(j);
 		}
-		
+
 		//Then, DELETE those #NoUseString#
 		for(int i = list.size() - 1; i >= 0; i--)
 		{
 			if(list.get(i).get_type() < 0)
 				list.remove(i);
 		}
-		
-		
+
+
 		//Next, load those text left
 		loadTextInHierarchy(list);
-		
-		
+
+
 		//Finally, judge whether most of the texts inside the slide included in the 3-level system.
 		isSlideWellOrganized();
 	}
-	
+
 	/* 'pageNum' is the unique symbol of a slide, maybe not continuous, but absolutely no repeat
-	 * 
+	 *
 	 * 'pageType' will be explained below:
 	 * -3: Absolutely empty slide.
 	 * -2: There's only a title or a unique text in this slide, maybe this is a picture slide.
@@ -291,7 +295,7 @@ public class slidePage {
 	 *  2: Tag slide
 	 *  3: Split slide
 	 */
-		
+
 	private int _pageNum = -1;
 	private int _pageType = -1;
 	private String _title = "";
@@ -300,13 +304,13 @@ public class slidePage {
 	private int _pageWidth = 1024;
 	private int _pageHeight = 768;
 	private Time _startTime = new Time(0);
-	
-	
+
+
 	//4 parameters in _titleLocation: left, right, top, bottom
 	private int[] _titleLocation = {-1, -1, -1, -1};
 	private int[] _levelCoordinates = {-1, -1, -1};
 	private int _middleLine = -1;
-	
+
 	public int get_PageNum() {
 		return _pageNum;
 	}
@@ -363,7 +367,7 @@ public class slidePage {
 		this._texts.clear();
 		this._texts = texts;
 	}
-	
+
 	public Time get_startTime() {
 		return _startTime;
 	}
@@ -371,7 +375,7 @@ public class slidePage {
 	public void set_startTime(Time _time) {
 		this._startTime = _time;
 	}
-	
+
 	public int[] get_titleLocation() {
 		return _titleLocation;
 	}
@@ -379,7 +383,7 @@ public class slidePage {
 	public void set_titleLocation(int[] _titleLocation) {
 		this._titleLocation = _titleLocation;
 	}
-	
+
 	public void set_titleLocation(int left, int top, int right, int bottom) {
 		this._titleLocation[0] = left;
 		this._titleLocation[1] = top;
@@ -407,15 +411,15 @@ public class slidePage {
 	public void setOneText(int index, String text) {
 		this._texts.get(index).set_text(text);
 	}
-	
+
 	public void setOneTextOutline(int index, int hierarchy, String text, int child) {
 		this._texts.get(index).set_text(text);
 		this._texts.get(index).set_hierarchy(hierarchy);
 		this._texts.get(index).set_child(child);
 	}
-	
+
 	//Real Functions
-	
+
 	public void contentCopy(slidePage s)
 	{
 		this.set_PageNum(s.get_PageNum());
@@ -425,29 +429,29 @@ public class slidePage {
 		this.set_pageHeight(s.get_pageHeight());
 		this.set_pageWidth(s.get_pageWidth());
 		this.set_startTime(s.get_startTime());
-		
+
 		this._texts.clear();
 		for(int i = 0; i < s.get_texts().size(); i++)
 			this._texts.add(s.get_texts().get(i));
 	}
-	
+
 	private ArrayList<Integer> seekTitle(ArrayList<textLine> list)
 	{
 		/* In this function, up to 3 textLines will be picked out and construct
 		 * the title of this slide. The decision covers the position, size and
 		 * type of the textLines derived from the OCR result. */
-		
+
 		String title = "";
 		ArrayList<Integer> titleCandidates= new ArrayList<Integer>();
-		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		double averageHeight = 0;
 		double biggest = 0;
 		double shortest = this.get_pageHeight();
 		int count = 0;
-		
+
 		/* Calculate the averageHeight of all the textLines, including those
 		 * 'unrecognized' #NoUseString#, but without those 'binded' ones.
 		 * The result will be further used as a decisive factor to judge whether
@@ -455,38 +459,38 @@ public class slidePage {
 		for(int i = 0; i < list.size(); i++)
 		{
 			if(list.get(i).get_type() == -2)
-				continue;			
+				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
 			if(list.get(i).get_height() > biggest) biggest = list.get(i).get_height();
 			if(list.get(i).get_height() < shortest) shortest = list.get(i).get_height();
 		}
-		
+
 		if(count <= 0)
 			return titleCandidates;
 		else
 			averageHeight = averageHeight / count;
-		
+
 		/* Firstly, search all the textLines with the type set as 1 (Title). It is a attribute derived
 		 * directly from OCR process, based on how 'Block' the characters are, which in this project we
 		 * will never know. Those textLines chosen should meet requirements below:
-		 * 
+		 *
 		 * 1. Shouldn't locate in the very top (10 as strict line and 20 as compromised line)
 		 * 2. If it's not the first one selected, it shouldn't be vertically too far from the previous chosen one.
-		 * 	  It means: the distance from the previous chosen textLine should be smaller than the distance from 
+		 * 	  It means: the distance from the previous chosen textLine should be smaller than the distance from
 		 * 	  the actual next text line( to avoid the situation that the next text is in the same vertical line).
 		 * 3. The measurement 'far' will be different on occasion that whether 'the next text' is also set as  'title',
-		 *    if yes, the measurement will be easy; or else, it will be more strict. 
-		 * 4. If the current textLine is much bigger than the one in the next line, choose it. 
+		 *    if yes, the measurement will be easy; or else, it will be more strict.
+		 * 4. If the current textLine is much bigger than the one in the next line, choose it.
 		 */
-		
+
 		for(int i = 0; i < list.size(); i++)
 		{
 			if(list.get(i).get_type() < 0)
 				continue;
-		
-			if(list.get(i).get_type() == 1 && titleCandidates.size() <= 2 && 
-				( list.get(i).get_top() >= 20*hp || ( list.get(i).get_top() >= 10*hp && 
+
+			if(list.get(i).get_type() == 1 && titleCandidates.size() <= 2 &&
+				( list.get(i).get_top() >= 20*hp || ( list.get(i).get_top() >= 10*hp &&
 				( list.get(i).get_height() >= (averageHeight + biggest)/2 || list.get(i).get_height() >= 30*hp ) ) ) )
 			{
 				if(titleCandidates.size() == 0)
@@ -517,7 +521,7 @@ public class slidePage {
 						else
 						{
 							if(aboveDistance < downDistance * 0.5 || aboveDistance < downDistance - 20*hp
-								|| list.get(j).get_height() * 2 <= list.get(i).get_height() 
+								|| list.get(j).get_height() * 2 <= list.get(i).get_height()
 								|| list.get(j).get_height() + 15*hp <= list.get(i).get_height())
 								titleCandidates.add(i);
 						}
@@ -525,20 +529,19 @@ public class slidePage {
 				}
 			}
 		}
-		
-		System.out.print(list.get(0).get_slideID() + ": ");
+		String info = list.get(0).get_slideID() + ": ";
 		for(int i = 0; i < titleCandidates.size(); i++)
-			System.out.print(titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ");
-		System.out.println();
-		
+			info += titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ";
+		LoggerSingleton.info(info);
+
 		/* Then, repair the choose.
-		 * 
+		 *
 		 * If some title candidates have already been selected, search all the text upper than the candidates,
 		 * and change the candidates when an upper text has a big enough height and locates left or middle.
-		 * 
+		 *
 		 * If there's no candidate yet (mean no suitable 'title' text in the slide), search others from the beginning,
 		 * find the first big, up and left one as the first title candidate.
-		 * 
+		 *
 		 * After this step, there's only 3 possibilities:
 		 * 1. There are several candidates (up to 3) all with the type as 1(title).
 		 * 2. There is only 1 single candidate with the type not to be 1(title).
@@ -552,7 +555,7 @@ public class slidePage {
 				{
 					if(list.get(i).get_type() < 0)
 						continue;
-					
+
 					if( ( list.get(i).get_height() >= (averageHeight + biggest)/2 || list.get(i).get_height() >= 30*hp )
 							&& list.get(i).get_left() < 700*wp && list.get(i).get_top() >= 10*hp )
 					{
@@ -579,7 +582,7 @@ public class slidePage {
 						break;
 					}
 				}
-			}			
+			}
 		}
 		else
 		{
@@ -587,7 +590,7 @@ public class slidePage {
 			{
 				if(list.get(i).get_type() < 0)
 					continue;
-				
+
 				if( ( list.get(i).get_height() >= (averageHeight + shortest)/2 || list.get(i).get_height() > 25*hp )
 						&& list.get(i).get_left() < 700*wp && list.get(i).get_top() >= 10*hp )
 				{
@@ -600,23 +603,23 @@ public class slidePage {
 				}
 			}
 		}
-		System.out.print(list.get(0).get_slideID() + ": ");
+		info = list.get(0).get_slideID() + ": ";
 		for(int i = 0; i < titleCandidates.size(); i++)
-			System.out.print(titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ");
-		System.out.println();
-		
+			info += titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ";
+		LoggerSingleton.info(info);
+
 		/* In this step, more text down to the previous title candidates will be considered.
 		 * If the textLine is closed to the candidate and away from the next line of text enough,
-		 * or the textLine is in the same line of the previous candidate and not separated so far horizontally, 
-		 * it will be adopted as the next candidate. Up to 3 candidates allowed. 
+		 * or the textLine is in the same line of the previous candidate and not separated so far horizontally,
+		 * it will be adopted as the next candidate. Up to 3 candidates allowed.
 		 */
 		if(titleCandidates.size() > 0 && titleCandidates.size() < 3)
-		{			
+		{
 			for(int i = titleCandidates.get(titleCandidates.size() - 1) + 1; i < list.size() && titleCandidates.size() < 3; i++)
 			{
 				if(list.get(i).get_type() < 0)
 					continue;
-				
+
 				int j = titleCandidates.get(titleCandidates.size() - 1);
 				int aboveDistance = list.get(i).get_top() - list.get(j).get_bottom();
 				int downDistance = aboveDistance;
@@ -651,14 +654,14 @@ public class slidePage {
 					titleCandidates.add(i);
 			}
 		}
-		
-		
-		System.out.print(list.get(0).get_slideID() + ": ");
+
+
+		info = list.get(0).get_slideID() + ": ";
 		for(int i = 0; i < titleCandidates.size(); i++)
-			System.out.print(titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ");
-		System.out.println();
-		
-		
+			info += titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ";
+		LoggerSingleton.info(info);
+
+
 		//bubble-reorder the candidates to make sure final title generated in right order
 		ArrayList<Integer> textForTitle = new ArrayList<Integer>();
 		for(int i = 0; i < titleCandidates.size(); i++)
@@ -685,7 +688,7 @@ public class slidePage {
 				}
 			}
 		}
-		
+
 		//generate the title and set the attribute of title_bottom
 		for(int i = 0; i < textForTitle.size(); i++)
 		{
@@ -700,28 +703,28 @@ public class slidePage {
 			if(list.get(j).get_bottom() > this._titleLocation[3])
 				this._titleLocation[3] = list.get(j).get_bottom();
 		}
-		
+
 		if(title != "" && title.charAt(title.length() - 1) == ' ')
 			title = title.substring(0, title.length() - 1);
-		
+
 		set_title(title);
-		
+
 		return titleCandidates;
 	}
-	
+
 	private ArrayList<Integer> seekTitleWithPTA(ArrayList<textLine> list, ArrayList<int[]> potentialTitleArea)
 	{
 		String title = "";
 		ArrayList<Integer> titleCandidates= new ArrayList<Integer>();
-		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		int averageHeight = 0;
 		int biggest = 0;
 		int shortest = this.get_pageHeight();
 		int count = 0;
-		
+
 		/* Calculate the averageHeight of all the textLines, including those
 		 * 'unrecognized' #NoUseString#, but without those 'binded' ones.
 		 * The result will be further used as a decisive factor to judge whether
@@ -729,13 +732,13 @@ public class slidePage {
 		for(int i = 0; i < list.size(); i++)
 		{
 			if(list.get(i).get_type() == -2)
-				continue;			
+				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
 			if(list.get(i).get_height() > biggest) biggest = list.get(i).get_height();
 			if(list.get(i).get_height() < shortest) shortest = list.get(i).get_height();
 		}
-		
+
 		if(count <= 0)
 			return titleCandidates;
 		else
@@ -743,17 +746,17 @@ public class slidePage {
 
 		/* Search from the beginning, find the first big, up and left one as the first title candidate.
 		 * If there is/are potential title area(s) achieved from previous round, search this/these area(s) first!
-		 * 
+		 *
 		 * After this step, there's only 2 possibilities:
 		 * 1. There is only 1 single candidate with the type not to be 1(title).
 		 * 2. No candidate -> in this case, title search is over and this slide will have no title.
 		 */
-				
+
 		for(int i = 0; i < list.size() && list.get(i).get_top() < 256*hp; i++)
 		{
 			if(list.get(i).get_type() < 0)
 				continue;
-			
+
 			if( ( list.get(i).get_height() >= (averageHeight + shortest)/2 || list.get(i).get_height() > 25*hp )
 					&& list.get(i).get_left() < 700*wp && list.get(i).get_top() >= 10*hp )
 			{
@@ -765,7 +768,7 @@ public class slidePage {
 				break;
 			}
 		}
-		
+
 		for(int i = 0; i < list.size() && list.get(i).get_top() < 256*hp && potentialTitleArea.size() > 0; i++)
 		{
 			boolean done = false;
@@ -792,7 +795,7 @@ public class slidePage {
 					t.set_width(pta[3]);
 					centered = true;
 				}
-				
+
 				if(list.get(i).isSameTitlePosition(t, this._pageWidth, this._pageHeight, centered))
 				{
 					if(titleCandidates.size() == 0)
@@ -811,30 +814,30 @@ public class slidePage {
 						}
 						done = true;
 						break;
-					}					
+					}
 				}
 			}
 			if(done)
 				break;
 		}
-		
-		System.out.print(list.get(0).get_slideID() + ": ");
+
+		String info = list.get(0).get_slideID() + ": ";
 		for(int i = 0; i < titleCandidates.size(); i++)
-			System.out.print(titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ");
-		System.out.println();
-		
+			info += titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ";
+		LoggerSingleton.info(info);
+
 		/* In this step, more text down to the previous title candidates will be considered.
 		 * If the textLine is closed to the candidate and away from the next line of text enough,
-		 * or the textLine is in the same line of the previous candidate and not separated so far horizontally, 
-		 * it will be adopted as the next candidate. Up to 3 candidates allowed. 
+		 * or the textLine is in the same line of the previous candidate and not separated so far horizontally,
+		 * it will be adopted as the next candidate. Up to 3 candidates allowed.
 		 */
 		if(titleCandidates.size() > 0 && titleCandidates.size() < 3)
-		{			
+		{
 			for(int i = titleCandidates.get(titleCandidates.size() - 1) + 1; i < list.size() && titleCandidates.size() < 3; i++)
 			{
 				if(list.get(i).get_type() < 0)
 					continue;
-				
+
 				int j = titleCandidates.get(titleCandidates.size() - 1);
 				int aboveDistance = list.get(i).get_top() - list.get(j).get_bottom();
 				int downDistance = aboveDistance;
@@ -872,7 +875,7 @@ public class slidePage {
 						t.set_width(pta[3]);
 						centered = true;
 					}
-					
+
 					for(int l = 0; l <= j; l++)
 					{
 						if(list.get(l).isSameTitlePosition(t, this._pageWidth, this._pageHeight, centered))
@@ -881,7 +884,7 @@ public class slidePage {
 							{
 								inPTA = true;
 								break;
-							}						
+							}
 						}
 					}
 					if(inPTA)
@@ -889,7 +892,7 @@ public class slidePage {
 				}
 				if(inPTA)
 					break;
-				
+
 				if(aboveDistance < 0 && list.get(i).get_left() < 768*wp)
 				{
 					if(list.get(i).get_left() < list.get(j).get_left())
@@ -901,7 +904,7 @@ public class slidePage {
 					}
 					else if(list.get(j).get_left() < list.get(i).get_left())
 					{
-						
+
 						if(list.get(j).get_left() + list.get(j).get_width() + 100*wp > list.get(i).get_left())
 							titleCandidates.add(i);
 						else if(list.get(j).get_left() + list.get(j).get_width() + 200*wp > list.get(i).get_left() && list.get(i).get_height() >= (averageHeight + biggest)/2)
@@ -914,14 +917,14 @@ public class slidePage {
 					titleCandidates.add(i);
 			}
 		}
-		
-		
-		System.out.print(list.get(0).get_slideID() + ": ");
+
+
+		info = list.get(0).get_slideID() + ": ";
 		for(int i = 0; i < titleCandidates.size(); i++)
-			System.out.print(titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ");
-		System.out.println();
-		
-		
+			info += titleCandidates.get(i) + "-" + list.get(titleCandidates.get(i)).get_text() + " ";
+		LoggerSingleton.info(info);
+
+
 		//bubble-reorder the candidates to make sure final title generated in right order
 		ArrayList<Integer> textForTitle = new ArrayList<Integer>();
 		for(int i = 0; i < titleCandidates.size(); i++)
@@ -948,7 +951,7 @@ public class slidePage {
 				}
 			}
 		}
-		
+
 		//generate the title and set the attribute of title_bottom
 		for(int i = 0; i < textForTitle.size(); i++)
 		{
@@ -963,22 +966,22 @@ public class slidePage {
 			if(list.get(j).get_bottom() > this._titleLocation[3])
 				this._titleLocation[3] = list.get(j).get_bottom();
 		}
-		
+
 		if(title != "" && title.charAt(title.length() - 1) == ' ')
 			title = title.substring(0, title.length() - 1);
-		
+
 		set_title(title);
-		
+
 		return titleCandidates;
 	}
-	
+
  	private void loadTextInHierarchy(ArrayList<textLine> list)
 	{
 		if(list.size() == 0) return;
-		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		/* In this function, all the textLines left (after deleting the no-use and for-title)
 		 * will be load into textOntlines. First those long texts occupied 2 vertical lines or more
 		 * will be combined, and the (x, y) of combined textLined will be updated
@@ -1002,10 +1005,10 @@ public class slidePage {
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
 					isSameLine = true;
-					
+
 				}
 				else
-				{	
+				{
 					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
 							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
 					list.get(i-1).set_width(right - list.get(i-1).get_left());
@@ -1014,14 +1017,14 @@ public class slidePage {
 					list.get(i-1).set_height(height);
 					list.get(i-1).set_bottom( list.get(i).get_bottom() );
 				}
-				
+
 				list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 				list.remove(i);
 				i--;
 				if(isSameLine) i--;
 			}
 		}
-		
+
 		if(this.get_title().length() == 0)
 		{
 			if(list.size() > 3)
@@ -1041,24 +1044,24 @@ public class slidePage {
 				}
 			}
 		}
-		
+
 		this.set_texts(createTextOutlines(list));
 	}
- 	
+
  	private void loadTextInHierarchyAdaptively(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
  	{
  		if(list.size() == 0) return;
- 		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		//Do the text-lines combination in same row only
 		this.connectContinuousTextlineInSameRowOnly(list, Gaps, lowCaseStart, extraSignStart);
-		
+
 		//Try to find potential middle axis, which represent 2-column slide layout.
 		this.set_middleLine(this.searchHorizontalMiddleLine(list, wp));
-		System.out.println("MiddleLine = " + this.get_middleLine());		
-		
+		LoggerSingleton.info("MiddleLine = " + this.get_middleLine());
+
 		if(this.get_middleLine() < 0)
 		{
 			for(int i = 1; i < list.size()-2; i++)
@@ -1072,9 +1075,9 @@ public class slidePage {
 				/*
 				if(list.get(i).get_text().contentEquals("several special cases at sindularities"))
 				{
-					System.out.println("$$$$$$");
+					LoggerSingleton.info("$$$$$$");
 					for(int j = i+1; j < list.size(); j++)
-						System.out.println(list.get(j).get_text());
+						LoggerSingleton.info(list.get(j).get_text());
 				}
 				*/
 				int subMiddleLine = searchHorizontalMiddleLine(subList, wp);
@@ -1086,21 +1089,21 @@ public class slidePage {
 					continue;
 				else
 				{
-					System.out.println("$$$$ Above-Left-Right");
+					LoggerSingleton.info("$$$$ Above-Left-Right");
 					ArrayList<textLine> aboveList = new ArrayList<textLine>();
 					for(int j = 0; j <= i; j++)
 					{
 						textLine t = list.get(j);
 						aboveList.add(t);
 					}
-					
+
 					this.set_texts(refinedTextOutlineLoading(aboveList, -1, Gaps, lowCaseStart, extraSignStart));
-					System.out.println("Sub-Middleline = " + subMiddleLine);
+					LoggerSingleton.info("Sub-Middleline = " + subMiddleLine);
 					this.get_texts().addAll(refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
 					return;
 				}
 			}
-			
+
 			for(int i = list.size()-1; i > 1; i--)
 			{
 				ArrayList<textLine> subList = new ArrayList<textLine>();
@@ -1109,7 +1112,7 @@ public class slidePage {
 					textLine t = list.get(j);
 					subList.add(t);
 				}
-				
+
 				int subMiddleLine = searchHorizontalMiddleLine(subList, wp);
 				if(subMiddleLine < this._pageWidth / 3 || subMiddleLine > this._pageWidth * 0.75)
 					continue;
@@ -1119,59 +1122,59 @@ public class slidePage {
 					continue;
 				else
 				{
-					System.out.println("$$$$ Left-Right-Bottom");
+					LoggerSingleton.info("$$$$ Left-Right-Bottom");
 					ArrayList<textLine> bottomList = new ArrayList<textLine>();
 					for(int j = i; j < list.size(); j++)
 					{
 						textLine t = list.get(j);
 						bottomList.add(t);
 					}
-					
-					System.out.println("Sub-Middleline = " + subMiddleLine);
+
+					LoggerSingleton.info("Sub-Middleline = " + subMiddleLine);
 					this.set_texts(refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
 					this.get_texts().addAll(refinedTextOutlineLoading(bottomList, -1, Gaps, lowCaseStart, extraSignStart));
 					return;
 				}
 			}
-			
+
 			for(int i = 0; i < list.size() - 1; i++)
 			{
 				if(list.get(i).get_top() < this.get_titleLocation()[3])
 					continue;
-					
+
 				for(int j = list.size() - 1 ; j > i; j--)
 				{
-					
+
 					ArrayList<textLine> subList = new ArrayList<textLine>();
 					for(int k = i+1; k < j; k++)
 					{
 						textLine t = list.get(k);
 						subList.add(t);
 					}
-					
+
 					if(searchHorizontalMiddleLine(subList, wp) > 0)
 						if(Math.abs(list.get(i).get_left() - list.get(i+1).get_left()) > 50 || list.get(i+1).get_top() - list.get(i).get_bottom() > Math.min(list.get(i).get_height(), list.get(i+1).get_height()) * 2)
 							if(Math.abs(list.get(j).get_left() - list.get(j-1).get_left()) > 50 || list.get(j).get_top() - list.get(j-1).get_bottom() > Math.min(list.get(j).get_height(), list.get(j-1).get_height()) * 2)
 							{
-								System.out.println("Remove some diagram content. [ " + subList.get(0).get_top() + ", " + subList.get(subList.size()-1).get_bottom() + " ] " + subList.size() + " items removed");
+								LoggerSingleton.info("Remove some diagram content. [ " + subList.get(0).get_top() + ", " + subList.get(subList.size()-1).get_bottom() + " ] " + subList.size() + " items removed");
 								for(int k = j-1; k > i; k--)
 								{
-									//System.out.println(list.get(k).get_text());
+									//LoggerSingleton.info(list.get(k).get_text());
 									list.remove(k);
 								}
-									
+
 								break;
 							}
 				}
 			}
-			
-			
+
+
 			this.set_texts(refinedTextOutlineLoading(list, this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
 		}
 		else
 			this.set_texts(refinedTextOutlineLoading(list, this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
  	}
- 	
+
  	private ArrayList<textOutline> adjustColumnTextSystem(ArrayList<textOutline> list)
  	{
  		/*
@@ -1182,7 +1185,7 @@ public class slidePage {
  		 */
  		if(list.size() < 4)
  			return list;
- 		
+
  		int allLevel = 0, firstLevel = 0;
 		for(int i = 0; i < list.size(); i++)
 		{
@@ -1193,7 +1196,7 @@ public class slidePage {
 					firstLevel++;
 			}
 		}
-		
+
 		if(firstLevel * 3 > allLevel && allLevel >= 4)
 		{
 			boolean first = false, second = false;
@@ -1206,7 +1209,7 @@ public class slidePage {
 					else
 						first = true;
 				}
-				
+
 				if(second)
 				{
 					if(list.get(i).get_hierarchy() == 1)
@@ -1218,16 +1221,16 @@ public class slidePage {
 				}
 			}
 		}
- 		
+
  		return list;
  	}
-	
+
  	private ArrayList<textLine> connectContinuousTextline(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
  	{
  		/* In this function, all the textLines left (after deleting the no-use and for-title)
 		 * will be load into textOntlines. First those long texts occupied 2 vertical lines or more
 		 * will be combined, and the (x, y) of combined textLined will be updated
-		 * Then, do the loading process */ 		
+		 * Then, do the loading process */
  		for(int i = 1; i < list.size(); i++)
  		{
  			if(list.get(i).isInSameRow(list.get(i-1)))
@@ -1244,7 +1247,7 @@ public class slidePage {
 					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
-					
+
 					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 					list.remove(i);
 					i--;
@@ -1253,7 +1256,7 @@ public class slidePage {
  			else
  				continue;
  		}
- 		
+
  		for(int i = 1; i < list.size(); i++)
  		{
  			if(list.get(i).isInSameRow(list.get(i-1)))
@@ -1270,15 +1273,15 @@ public class slidePage {
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
 					list.get(i-1).set_bottom( list.get(i).get_bottom() );
-					
+
 					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 					list.remove(i);
 					i--;
  				}
  			}
  		}
- 		
- 		
+
+
  		/*
  		for(int i = 1; i < list.size(); i++)
 		{
@@ -1298,10 +1301,10 @@ public class slidePage {
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
 					isSameLine = true;
-					
+
 				}
 				else
-				{	
+				{
 					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
 							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
 					list.get(i-1).set_width(right - list.get(i-1).get_left());
@@ -1311,7 +1314,7 @@ public class slidePage {
 					list.get(i-1).set_height(height);
 					list.get(i-1).set_bottom( list.get(i).get_bottom() );
 				}
-				
+
 				list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 				list.remove(i);
 				i--;
@@ -1340,7 +1343,7 @@ public class slidePage {
 					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
-					
+
 					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 					list.remove(i);
 					i--;
@@ -1349,10 +1352,10 @@ public class slidePage {
  			else
  				continue;
  		}
- 		
+
  		return list;
  	}
- 	
+
  	private ArrayList<textLine> connectContinuousTextLineMultiRowsOnly(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
  	{
  		for(int i = 1; i < list.size(); i++)
@@ -1371,22 +1374,22 @@ public class slidePage {
 					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
 					list.get(i-1).set_height(height);
 					list.get(i-1).set_bottom( list.get(i).get_bottom() );
-					
+
 					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
 					list.remove(i);
 					i--;
  				}
  			}
  		}
- 		
+
  		return list;
  	}
- 	
+
  	private boolean isTextContinued(ArrayList<textLine> list, int index)
 	{
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		if(index == 0)
 			return false;
 		else
@@ -1404,10 +1407,10 @@ public class slidePage {
 					|| (list.get(index).get_top() - list.get(index-1).get_top() > 0 && list.get(index).get_top() - list.get(index-1).get_top() < list.get(index-1).get_height()/2)
 					|| (list.get(index-1).get_top() - list.get(index).get_top() > 0 && list.get(index-1).get_top() - list.get(index).get_top() < list.get(index).get_height()/2))
 				{
-					
-					//System.out.println(list.get(index-1).get_left() + "  " + list.get(index-1).get_width() + "  " + list.get(index).get_left());
+
+					//LoggerSingleton.info(list.get(index-1).get_left() + "  " + list.get(index-1).get_width() + "  " + list.get(index).get_left());
 					if(list.get(index-1).get_left() < list.get(index).get_left())
-					{						
+					{
 						if(list.get(index-1).get_left() + list.get(index-1).get_width() + 100*wp > list.get(index).get_left())
 							return true;
 					}
@@ -1417,14 +1420,14 @@ public class slidePage {
 							return true;
 					}
 				}
-					
+
 				/* for others, four requirements:
 				 * 1. Vertically near
 				 * 2. Previous line begins with BLOCK-LETTER and current line not
 				 * 3. Previous line should comparably longer in the context
 				 * 4. Horizontally meet the demand */
 				int aboveDistance = list.get(index).get_top() - list.get(index-1).get_bottom();
-				int downDistance = (index == list.size() - 1) ? aboveDistance 
+				int downDistance = (index == list.size() - 1) ? aboveDistance
 						: (list.get(index+1).get_top() - list.get(index).get_bottom());
 				if(downDistance < 0)
 				{
@@ -1437,7 +1440,7 @@ public class slidePage {
 						}
 					}
 				}
-				
+
 				boolean isAboveBlock, isCurrentBlock;
 				if(list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z')
 					isCurrentBlock = true;
@@ -1446,33 +1449,33 @@ public class slidePage {
 					isCurrentBlock = true;
 				else
 					isCurrentBlock = false;
-				
+
 				if(list.get(index-1).get_text().charAt(0) < 'a' || list.get(index-1).get_text().charAt(0) > 'z')
 					isAboveBlock = true;
 				else if(list.get(index-1).get_text().length() > 3 && list.get(index-1).get_text().charAt(1) == ' '
 						&& list.get(index-1).get_text().charAt(2) >= 'A' && list.get(index-1).get_text().charAt(2) <= 'Z')
 					isAboveBlock = true;
-				else 
+				else
 					isAboveBlock = false;
-								
+
 				int count = 2;
 				int averageRight = list.get(index-1).get_lastLineWidth() + list.get(index).get_lastLineWidth();
 				if(index >= 2 && list.get(index-1).get_top() - list.get(index-2).get_bottom() < 30*hp && list.get(index-1).get_left() < list.get(index-2).get_left() + 75*wp
-						&& list.get(index-1).get_left() > list.get(index-2).get_left() - 75*wp) 
+						&& list.get(index-1).get_left() > list.get(index-2).get_left() - 75*wp)
 				{
 					averageRight += list.get(index-2).get_lastLineWidth();
 					count ++;
 				}
 				if(index < list.size()-1 && downDistance < 30*hp && list.get(index+1).get_left() < list.get(index).get_left() + 75*wp
-						&& list.get(index+1).get_left() > list.get(index).get_left() - 75*wp) 
+						&& list.get(index+1).get_left() > list.get(index).get_left() - 75*wp)
 				{
 					averageRight += list.get(index+1).get_lastLineWidth();
 					count ++;
 				}
 				averageRight /= count;
-				
-				
-				
+
+
+
 				if(isAboveBlock && !isCurrentBlock && aboveDistance < downDistance * 2 && aboveDistance < list.get(index).get_height() * 2
 				   && (list.get(index-1).get_lastLineWidth() >= averageRight - 100*wp || list.get(index-1).get_lastLineWidth() + list.get(index-1).get_left() > 750*wp) )
 				{
@@ -1484,7 +1487,7 @@ public class slidePage {
 						return true;
 				}
 			}
-		}		
+		}
 		return false;
 	}
 
@@ -1492,7 +1495,7 @@ public class slidePage {
 	{
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		if(index <= 0)
 			return false;
 		else if(list.get(index).get_type() == 3 || list.get(index).get_type() == -1)
@@ -1503,12 +1506,12 @@ public class slidePage {
 		{
 			//if two textlines are in same vertical line and horizontally not too far away, combine them.
 			if(list.get(index).isInSameRow(list.get(index-1)))
-			{				
+			{
 				int maxGap = (list.get(index).get_width() + list.get(index-1).get_width()) / (list.get(index).get_text().length() + list.get(index-1).get_text().length()) * 5;
 				maxGap = maxGap < 100*wp ? maxGap : (int)(100*wp);
-				
+
 				if(list.get(index-1).get_left() < list.get(index).get_left())
-				{						
+				{
 					if(list.get(index-1).get_left() + list.get(index-1).get_width() < 512*wp && list.get(index).get_left() > 512*wp)
 					{
 						if(list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z')
@@ -1518,7 +1521,7 @@ public class slidePage {
 						if(list.get(index-1).get_top() != list.get(index).get_top() && list.get(index-1).get_bottom() != list.get(index).get_bottom())
 							return false;
 					}
-					
+
 					if(list.get(index-1).get_left() + list.get(index-1).get_width() + maxGap > list.get(index).get_left())
 						return true;
 				}
@@ -1545,11 +1548,11 @@ public class slidePage {
 				 * 2. [ -5, 2] : Potential extra subtopic sign
 				 * 3. [ -5, 2] : BLOCK start & low case START
 				 * 4. [-10, 2] : Vertical line space
-				 * 5. [ -8, 2] : Horizontal start position difference 
-				 * 6. [ -8, 2] : Horizontal length 
+				 * 5. [ -8, 2] : Horizontal start position difference
+				 * 6. [ -8, 2] : Horizontal length
 				 */
 				int p1, p2, p3, p4, p5, p6;
-				
+
 				//1. Hierarchical gap
 				p1 = 0;
 				for(int i = 0; i < Gaps.size(); i++)
@@ -1558,15 +1561,15 @@ public class slidePage {
 					if(currentGap >= Gaps.get(i) - 3 && currentGap <= Gaps.get(i) + 3)
 						p1 = -10;
 				}
-				
+
 				/* 2. extra subtopic sign
 				 *
 				 * The 'count' parameter here is used to mark whether there was a extra
 				 * subtopic sign removed in the beginning of adaptive round.
-				 * 
+				 *
 				 * And when there was one in the current textLine, we believe there is
 				 * very rare change for a further combination.
-				 * 
+				 *
 				 * The only situation to recommend to combine is when above textLine had
 				 * a extra sign while current textLine hadn't.
 				 */
@@ -1582,19 +1585,19 @@ public class slidePage {
 				}
 				else
 					p2 = 0;
-				
-				
+
+
 				/* 3. BLOCK & low case
-				 * 
+				 *
 				 * Based on the statistics in the last round, one set of slides can me marked by whether
 				 * they prone to have low-case letters in the beginning of the subtopic, which saved in the
 				 * boolean parameter 'lowCaseStart'
-				 * 
+				 *
 				 * Note that we have special treatment of ABBREVIATIONs. When lowCaseStart is true, we won't mark
-				 * above textLine with a ABBREVIATION start as BLOCK to promote a combination. And whenever the 
+				 * above textLine with a ABBREVIATION start as BLOCK to promote a combination. And whenever the
 				 * current textLine beginning with ABBREVIATION will be considered as low case. As a result, only
-				 * an ABBREVIATION start in above textLine while lowCaseStart is false, it can be marked as BLOCK 
-				 * 
+				 * an ABBREVIATION start in above textLine while lowCaseStart is false, it can be marked as BLOCK
+				 *
 				 * Furthermore, if current subtopic looks like "1 First subtopic", "2 Second subtopic" which start with
 				 * a number and followed by a BLOCK letter when lowCaseStart is false, it will also be considered
 				 * as a BLOCK start to avoid being combined.
@@ -1602,7 +1605,7 @@ public class slidePage {
 				p3 = 0;
 				char above = ' ', current = ' ';
 				boolean aboveBlockInitials = false, currentBlockInitials = false;
-				
+
 				if(list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z')
 				{
 					current = 'A';
@@ -1617,10 +1620,10 @@ public class slidePage {
 					if(list.get(index).get_text().length() > 3 && list.get(index).get_text().charAt(1) == ' ' && !lowCaseStart
 							&& list.get(index).get_text().charAt(2) >= 'A' && list.get(index).get_text().charAt(2) <= 'Z' )
 						current = 'A';
-					else					
+					else
 						current = '8';
 				}
-				
+
 				if(list.get(index-1).get_text().charAt(0) >= 'A' && list.get(index-1).get_text().charAt(0) <= 'Z')
 				{
 					above = 'A';
@@ -1635,17 +1638,17 @@ public class slidePage {
 					if(list.get(index-1).get_text().length() > 3 && list.get(index-1).get_text().charAt(1) == ' ' && !lowCaseStart
 							&& list.get(index-1).get_text().charAt(2) >= 'A' && list.get(index-1).get_text().charAt(2) <= 'Z' )
 						above = 'A';
-					else					
+					else
 						above = '8';
 				}
-				
+
 				if(lowCaseStart && aboveBlockInitials)
 					above = 'a';
-				
+
 				if(currentBlockInitials)
 					current = 'a';
-				
-				
+
+
 				if(lowCaseStart)
 				{
 					if(above == 'a' || above == '8')
@@ -1694,30 +1697,30 @@ public class slidePage {
 						else
 							p3 = -5;
 					}
-					
+
 				}
-				
-				
+
+
 				//4. Vertical line space
 				/*
 				 * Here we generally use line space (above and down) to evaluate how possible neighboring textLines
 				 * should be combined.
-				 * 
+				 *
 				 * 1st. if aboveDistance is too large, 3 time of current textLine height, veto it.
-				 * 
+				 *
 				 * 2nd. if downDistance or above2Distance is too large, 8/3 of the height, ignore it because it
 				 *      means there is no correlation between current textLine and next one, or pre-previous one.
-				 *      
+				 *
 				 * 3rd. if aboveDistance is 2 times larger of the current height, marked as large line space, using
 				 * 		a set of measurement not promoting combination. Or else, promoting it.
-				 * 
+				 *
 				 * 4th. More combining chance when downDistance is obviously larger than aboveDistance. While similar,
 				 * 		promote it when above2Distance is larger than aboveDistance.
 				 */
 				p4 = 0;
 				int charAveWidth = list.get(index).get_width() / list.get(index).get_text().length();
 				int aboveDistance = list.get(index).get_top() - list.get(index-1).get_bottom();
-				int downDistance = (index == list.size() - 1) ? aboveDistance 
+				int downDistance = (index == list.size() - 1) ? aboveDistance
 						: (list.get(index+1).get_top() - list.get(index).get_bottom());
 				if(downDistance < 0)
 				{
@@ -1730,12 +1733,12 @@ public class slidePage {
 						}
 					}
 				}
-				
+
 				if(downDistance > list.get(index).get_height() * 2.66)
 					downDistance = aboveDistance;
 				else if(index < list.size() - 1 && Math.abs(list.get(index+1).get_left() - list.get(index).get_left()) > 5 * charAveWidth)
 					downDistance = aboveDistance;
-				
+
 				if(aboveDistance >= list.get(index).get_height() * 3)
 					p4 = -10;
 				else if(aboveDistance >= list.get(index).get_height() * 2.5)
@@ -1774,26 +1777,26 @@ public class slidePage {
 					else
 					{
 						int above2Distance = index == 1 ? aboveDistance : list.get(index-1).get_top() - list.get(index-2).get_bottom();
-						
+
 						if(above2Distance > list.get(index).get_height() * 2.66)
 							above2Distance = aboveDistance;
 						else if(index > 1 && Math.abs(list.get(index-2).get_left() - list.get(index-1).get_left()) > 5 * charAveWidth)
 							above2Distance = aboveDistance;
-						
+
 						if(above2Distance >= aboveDistance * 2)
 							p4 = 2;
 						else if(above2Distance >= aboveDistance * 1.5)
 							p4 = 1;
 						else
-							p4 = 0;				
+							p4 = 0;
 					}
 				}
-				
+
 				//5. Start Position
-				//Pay attention that when lowCaseStart is true, drop this measurement. 
-				p5 = 0;	
+				//Pay attention that when lowCaseStart is true, drop this measurement.
+				p5 = 0;
 				int startGap = list.get(index).get_left() - list.get(index-1).get_lastLineLeft();
-				
+
 				if(startGap >= 0)
 				{
 					if(startGap > 15 * charAveWidth)
@@ -1826,27 +1829,27 @@ public class slidePage {
 					else
 						p5 = 2;
 				}
-				
+
 				if(lowCaseStart)
 					p5 -= 2;
-				
-				
+
+
 				/* 6. Length
 				 *
 				 * When current textLine is longer than above one, generally there's no chance for a combination
 				 * especially when the difference is longer than the first word of current textLine.
-				 * 
+				 *
 				 * When above textLine is longer, it should be long enough through all the textLines with their
 				 * left-edge locating similar to this above textLine. And the chance of combining increases when
 				 * the difference gets larger.
-				 * 
-				 * And when lowCaseStart is true, we prone to combine less even above textLine is longer. 
+				 *
+				 * And when lowCaseStart is true, we prone to combine less even above textLine is longer.
 				 */
 				p6 = 0;
-				
+
 				int aboveRight = list.get(index-1).get_lastLineLeft() + list.get(index-1).get_lastLineWidth();
 				int currentRight = list.get(index).get_left() + list.get(index).get_width();
-				
+
 				if(aboveRight - currentRight < 0)
 				{
 					String[] words = list.get(index).get_text().split(" ");
@@ -1870,7 +1873,7 @@ public class slidePage {
 						if(list.get(i).get_left() > list.get(index-1).get_lastLineLeft() - charAveWidth * threshold && list.get(i).get_left() < list.get(index-1).get_lastLineLeft() + charAveWidth * threshold)
 							if(list.get(i).get_left() + list.get(i).get_width() > rightmostInThisLevel)
 								rightmostInThisLevel = list.get(i).get_left() + list.get(i).get_width();
-					
+
 					if(rightmostInThisLevel - aboveRight < (words[0].length() + 3) * charAveWidth)
 					{
 						if(lowCaseStart)
@@ -1903,21 +1906,21 @@ public class slidePage {
 				/*
 				if(list.get(index).get_slideID() > 1)
 				{
-					System.out.println("----------------------");
-					System.out.println(list.get(index-1).get_text() + "\t" + list.get(index-1).get_left() + "\t" + startGap);
-					System.out.println(list.get(index).get_text() + "\t" + list.get(index).get_left() + lowCaseStart);
-					System.out.println(p1 + "  " + p2 + "  " + p3 + "  " + p4 + "  " + p5 + "  " + p6 + " -> " + (p1 + p2 + p3 + p4 + p5 + p6));
+					LoggerSingleton.info("----------------------");
+					LoggerSingleton.info(list.get(index-1).get_text() + "\t" + list.get(index-1).get_left() + "\t" + startGap);
+					LoggerSingleton.info(list.get(index).get_text() + "\t" + list.get(index).get_left() + lowCaseStart);
+					LoggerSingleton.info(p1 + "  " + p2 + "  " + p3 + "  " + p4 + "  " + p5 + "  " + p6 + " -> " + (p1 + p2 + p3 + p4 + p5 + p6));
 				}
 				*/
-				
+
 				if(p1 + p2 + p3 + p4 + p5 + p6 > 0)
 					return true;
 			}
 		}
-		
+
 		return false;
 	}
- 	
+
  	private ArrayList<textOutline> refinedTextOutlineLoading(ArrayList<textLine> list, int middleLine, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
  	{
  		ArrayList<textOutline> result = new ArrayList<textOutline>();
@@ -1933,11 +1936,11 @@ public class slidePage {
 				algorithmInterface ai = new algorithmInterface();
 				totalLength += t.get_text().length();
 				if(ai.isOrderNum(t.get_text()) || ai.isStatNum(t.get_text()) || ai.isOptionNum(t.get_text()))
-					countNum++;				
+					countNum++;
 			}
 			aveLength = totalLength / list.size();
-			System.out.println("%%%% All: aveLength = " + aveLength + " totalItems = " + list.size() + " digitNum = " + countNum);
-			
+			LoggerSingleton.info("%%%% All: aveLength = " + aveLength + " totalItems = " + list.size() + " digitNum = " + countNum);
+
 			if(aveLength < 5 && list.size() > 1)
 			{
 				for(int i = list.size()-1; i >= 0; i--)
@@ -1950,17 +1953,17 @@ public class slidePage {
 					if(list.get(i).get_text().length() < 10)
 						list.remove(i);
 			}
-			
+
 			//remove all those textlines with height 9 or 10
 	 		for(int i = list.size() - 1; i >= 0; i--)
 			{
 				if(list.get(i).get_type() < 0)
 					list.remove(i);
 			}
-			
+
 			//Continuous text-lines connection
 			list = this.connectContinuousTextLineMultiRowsOnly(list, Gaps, lowCaseStart, extraSignStart);
-			
+
 			//Remove numbers
 			for(int i = list.size()-1; i >= 0; i--)
 			{
@@ -1969,7 +1972,7 @@ public class slidePage {
 				if(ai.isOrderNum(t.get_text()) || ai.isStatNum(t.get_text()) || ai.isOptionNum(t.get_text()))
 					list.remove(i);
 			}
-			
+
 			//If no title found yet, try to find one here
 			if(this.get_title().length() == 0)
 			{
@@ -1990,10 +1993,10 @@ public class slidePage {
 					}
 				}
 			}
-			
+
 			/* If there are more than 5 text-lines in the slide, try 2 different content loading methods.
 			 * And choose the better result (with more text-lines involved in the system).
-			 * 
+			 *
 			 * When not, use the static loading method only.
 			 */
 			if(list.size() >= 5)
@@ -2004,20 +2007,20 @@ public class slidePage {
 				for(int i = 0; i < tl1.size(); i++)
 					if(tl1.get(i).get_hierarchy() > 0)
 						count1++;
-				
+
 				ArrayList<textOutline> tl2 = new ArrayList<textOutline>();
 				tl2 = createTextOutlinesBySelfStats(list);
 				int count2 = 0;
 				for(int i = 0; i < tl2.size(); i++)
 					if(tl2.get(i).get_hierarchy() > 0)
 						count2++;
-				
+
 				if(count2 > count1 && count2 > list.size() / 2)
 					result = tl2;
 				else
 					result = tl1;
-				
-				System.out.println("Stats: " + "static-" + count1 + " adaptive-" + count2);
+
+				LoggerSingleton.info("Stats: " + "static-" + count1 + " adaptive-" + count2);
 			}
 			else
 				result = createTextOutlines(list);
@@ -2034,17 +2037,17 @@ public class slidePage {
 				else
 					leftTexts.add(t);
 			}
-			
+
 			leftTexts = halfThisColumnWhenNeeded(leftTexts, true);
 			rightTexts = halfThisColumnWhenNeeded(rightTexts, false);
-			
+
 			// If the organizing of this column is bad, consider it as a part of diagram and remove it.
 			if(isThisPartChaos(leftTexts, middleLine, true))
 				leftTexts.clear();
-			
+
 			if(isThisPartChaos(rightTexts, middleLine, false))
 				rightTexts.clear();
-			
+
 			//remove all those textlines with height 9 or 10
 	 		for(int i = leftTexts.size() - 1; i >= 0; i--)
 			{
@@ -2056,11 +2059,11 @@ public class slidePage {
 				if(rightTexts.get(i).get_type() < 0)
 					rightTexts.remove(i);
 			}
-			
+
 			// Do the connection
 			leftTexts = this.connectContinuousTextLineMultiRowsOnly(leftTexts, Gaps, lowCaseStart, extraSignStart);
 			rightTexts = this.connectContinuousTextLineMultiRowsOnly(rightTexts, Gaps, lowCaseStart, extraSignStart);
-			
+
 			for(int i = leftTexts.size()-1; i >= 0; i--)
 			{
 				textLine t = leftTexts.get(i);
@@ -2075,7 +2078,7 @@ public class slidePage {
 				if(ai.isOrderNum(t.get_text()) || ai.isStatNum(t.get_text()) || ai.isOptionNum(t.get_text()))
 					rightTexts.remove(i);
 			}
-			
+
 			// Add title when possible from either column
 			if(this.get_title().length() == 0)
 			{
@@ -2110,13 +2113,13 @@ public class slidePage {
 								break;
 							}
 						}
-				}				
+				}
 			}
-			
+
 			//check whether two columns should be loaded
 			boolean both = true;
 			boolean onlyLeft = true;
-			
+
 			if(middleLine < 100)
 			{
 				both = false;
@@ -2149,18 +2152,18 @@ public class slidePage {
 				else
 					both = true;
 			}
-			
+
 			/* Content loading: two columns respectively, and combine together one after another.
-			 * 
+			 *
 			 * If the right column is obviously contain more content than the left, make it ahead,
 			 * otherwise, first left, then right.
-			 * 
+			 *
 			 * For each columns, if there are more than 8 text-lines, try static and adaptive loading method,
 			 * otherwise, try static and centered loading method, then choose the better result.
-			 * 
+			 *
 			 * Please note when columns exist, they are very likely to be two natural first-level components,
 			 * so if a column contains more than 4 elements, there would be only one first-level text-outline,
-			 * which is the first one within this column. 
+			 * which is the first one within this column.
 			 */
 			if(both)
 			{
@@ -2169,7 +2172,7 @@ public class slidePage {
 					leftLength += leftTexts.get(i).get_text().length();
 				for(int i = 0; i < rightTexts.size(); i++)
 					rightLength += rightTexts.get(i).get_text().length();
-				
+
 				if(rightLength > leftLength * 5 && rightTexts.size() > leftTexts.size() * 2 && leftTexts.get(0).get_top() < rightTexts.get(0).get_bottom())
 				{
 					ArrayList<textOutline> tl1 = new ArrayList<textOutline>();
@@ -2178,21 +2181,21 @@ public class slidePage {
 					for(int i = 0; i < tl1.size(); i++)
 						if(tl1.get(i).get_hierarchy() > 0)
 							count1++;
-					
+
 					ArrayList<textOutline> tl2 = new ArrayList<textOutline>();
 					tl2 = (rightTexts.size() >= 8) ? createTextOutlinesBySelfStats(rightTexts) : createTextOutlinesByCenterAlignment(rightTexts);
 					int count2 = 0;
 					for(int i = 0; i < tl2.size(); i++)
 						if(tl2.get(i).get_hierarchy() > 0)
 							count2++;
-					
+
 					if(count2 > count1 && count2 > rightTexts.size() / 2)
 						result = adjustColumnTextSystem(tl2);
 					else
 						result = adjustColumnTextSystem(tl1);
-					
-					System.out.println("Right Column Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
-					
+
+					LoggerSingleton.info("Right Column Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
+
 					result.addAll(adjustColumnTextSystem(createTextOutlines(leftTexts)));
 				}
 				else
@@ -2203,41 +2206,41 @@ public class slidePage {
 					for(int i = 0; i < tl1.size(); i++)
 						if(tl1.get(i).get_hierarchy() > 0)
 							count1++;
-					
+
 					ArrayList<textOutline> tl2 = new ArrayList<textOutline>();
 					tl2 = (leftTexts.size() >= 8) ? createTextOutlinesBySelfStats(leftTexts) : createTextOutlinesByCenterAlignment(leftTexts);
 					int count2 = 0;
 					for(int i = 0; i < tl2.size(); i++)
 						if(tl2.get(i).get_hierarchy() > 0)
 							count2++;
-					
+
 					if(count2 >= count1 && count2 > leftTexts.size() / 2)
 						result = adjustColumnTextSystem(tl2);
 					else
 						result = adjustColumnTextSystem(tl1);
-					
-					System.out.println("Left Column Stats: " + "static-" + count1 + (leftTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
-					
+
+					LoggerSingleton.info("Left Column Stats: " + "static-" + count1 + (leftTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
+
 					ArrayList<textOutline> tl_1 = new ArrayList<textOutline>();
 					tl_1 = createTextOutlines(rightTexts);
 					count1 = 0;
 					for(int i = 0; i < tl_1.size(); i++)
 						if(tl_1.get(i).get_hierarchy() > 0)
 							count1++;
-					
+
 					ArrayList<textOutline> tl_2 = new ArrayList<textOutline>();
 					tl_2 = (rightTexts.size() >= 8) ? createTextOutlinesBySelfStats(rightTexts) : createTextOutlinesByCenterAlignment(rightTexts);
 					count2 = 0;
 					for(int i = 0; i < tl_2.size(); i++)
 						if(tl_2.get(i).get_hierarchy() > 0)
 							count2++;
-					
+
 					if(count2 >= count1 && count2 > rightTexts.size() / 2)
 						result.addAll(adjustColumnTextSystem(tl_2));
 					else
 						result.addAll(adjustColumnTextSystem(tl_1));
-					
-					System.out.println("Right Column Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
+
+					LoggerSingleton.info("Right Column Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
 				}
 			}
 			else
@@ -2250,20 +2253,20 @@ public class slidePage {
 					for(int i = 0; i < tl1.size(); i++)
 						if(tl1.get(i).get_hierarchy() > 0)
 							count1++;
-					
+
 					ArrayList<textOutline> tl2 = new ArrayList<textOutline>();
 					tl2 = (rightTexts.size() >= 8) ? createTextOutlinesBySelfStats(leftTexts) : createTextOutlinesByCenterAlignment(leftTexts);
 					int count2 = 0;
 					for(int i = 0; i < tl2.size(); i++)
 						if(tl2.get(i).get_hierarchy() > 0)
 							count2++;
-					
+
 					if(count2 > count1 && count2 > leftTexts.size() / 2)
 						result = tl2;
 					else
 						result = tl1;
-					
-					System.out.println("Left Column (only) Stats: " + "static-" + count1 + (leftTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
+
+					LoggerSingleton.info("Left Column (only) Stats: " + "static-" + count1 + (leftTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
 				}
 				else
 				{
@@ -2273,51 +2276,51 @@ public class slidePage {
 					for(int i = 0; i < tl1.size(); i++)
 						if(tl1.get(i).get_hierarchy() > 0)
 							count1++;
-					
+
 					ArrayList<textOutline> tl2 = new ArrayList<textOutline>();
 					tl2 = (rightTexts.size() >= 8) ? createTextOutlinesBySelfStats(rightTexts) : createTextOutlinesByCenterAlignment(rightTexts);
 					int count2 = 0;
 					for(int i = 0; i < tl2.size(); i++)
 						if(tl2.get(i).get_hierarchy() > 0)
 							count2++;
-					
+
 					if(count2 > count1 && count2 > rightTexts.size() / 2)
 						result = tl2;
 					else
 						result = tl1;
-					
-					System.out.println("Right Column (only) Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
+
+					LoggerSingleton.info("Right Column (only) Stats: " + "static-" + count1 + (rightTexts.size() >= 8 ? " adaptive-" : " center-") + count2);
 				}
 			}
-		}		
- 		
+		}
+
  		return result;
  	}
- 	
+
 	private ArrayList<textOutline> createTextOutlines(ArrayList<textLine> list)
 	{
 		ArrayList<textOutline> result = new ArrayList<textOutline>();
-		
+
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
 		{
 			if(list.get(i).get_type() < 0)
 				list.remove(i);
 		}
-		
-		if(list.size() == 0) 
+
+		if(list.size() == 0)
 			return result;
-		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		/* Up to 3 levels differed. (can be less)
 		 * First adaptively find the levels and then set them */
-		
+
 		int firstLevelLeft = (int)(768*wp);
 		int secondLevelLeft = 0;
 		int thirdLevelLeft = 0;
-		
+
 		double averageHeight = 0;
 		double averageWidth = 0;
 		double shortest = this.get_pageHeight();
@@ -2331,7 +2334,7 @@ public class slidePage {
 		}
 		averageHeight = averageHeight / count;
 		averageWidth  = averageWidth / count;
-		
+
 		/* First try to find the 1st Level in left-top quarter of the slide
 		 * the target line should meet requirement below:
 		 * 1. Not so short in height
@@ -2350,12 +2353,12 @@ public class slidePage {
 					firstLevelLeft = list.get(i).get_left();
 					temp = i;
 				}
-			}				
+			}
 		}
-		
-		System.out.println("Static Content-Tree Loading");
-		System.out.println(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
-		
+
+		LoggerSingleton.info("Static Content-Tree Loading");
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
+
 		if(temp == -1)
 		{
 			for(int i = 0; i < list.size(); i++)
@@ -2368,12 +2371,12 @@ public class slidePage {
 						firstLevelLeft = list.get(i).get_left();
 						temp = i;
 					}
-				}				
+				}
 			}
 		}
-		
-		System.out.println(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
-		
+
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
+
 		for(int i = 0; i < temp; i++)
 		{
 			if(list.get(i).get_left() > firstLevelLeft - 5*wp && list.get(i).get_left() < firstLevelLeft + 5*wp)
@@ -2382,12 +2385,12 @@ public class slidePage {
 				break;
 			}
 		}
-		
-		System.out.println(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
-		
+
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
+
 		/* Try to find whether there is a more 'left' choice by searching the previous textline
 		 * of the very first one on the firstLevelLeft */
-		
+
 		while(temp > 0 && list.get(temp).get_left() > list.get(temp-1).get_left()
 				&& list.get(temp).get_left() - list.get(temp-1).get_left() < 100*wp
 				&& list.get(temp).get_top() - list.get(temp-1).get_bottom() < 50*hp
@@ -2403,13 +2406,13 @@ public class slidePage {
 				}
 			}
 		}
-		
-		System.out.println(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
-		
+
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + temp + "  " + (temp >= 0 ? list.get(temp).get_text() : "no text selected!"));
+
 		/* Set the 2nd and 3rd level by searching the textlines in 'system'
 		 * the target should be following a upper-level textline or
 		 * surrounding by textlines horizontally near */
-		
+
 		secondLevelLeft = this.get_pageWidth();
 		int difference = this.get_pageWidth();
 		for(int i = 1; i < list.size(); i++)
@@ -2427,10 +2430,10 @@ public class slidePage {
 					{
 						secondLevelLeft = list.get(i).get_left();
 						difference = secondLevelLeft - firstLevelLeft;
-					}							
+					}
 				}
 		}
-		
+
 		thirdLevelLeft = this.get_pageWidth();
 		difference = this.get_pageWidth();
 		for(int i = 1; i < list.size(); i++)
@@ -2443,19 +2446,19 @@ public class slidePage {
 						difference = thirdLevelLeft - secondLevelLeft;
 					}
 		}
-						
 
-		
+
+
 		/* Load the textOntlines here
 		 * Two judgment, one is strict and absolute on horizontal position
 		 * another is more flexible according to the context
 		 * and, footline will not be included */
-		
-		System.out.println(list.get(0).get_slideID() + ":  " + firstLevelLeft + "  " + secondLevelLeft + " " + thirdLevelLeft);
+
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + firstLevelLeft + "  " + secondLevelLeft + " " + thirdLevelLeft);
 		this._levelCoordinates[0] = (firstLevelLeft >= 768*wp) ? -1 : firstLevelLeft;
 		this._levelCoordinates[1] = (secondLevelLeft >= this._pageWidth) ? -1 : secondLevelLeft;
 		this._levelCoordinates[2] = (thirdLevelLeft >= this._pageWidth) ? -1 : thirdLevelLeft;
-		
+
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
@@ -2494,7 +2497,7 @@ public class slidePage {
 					last = 1;
 					last_in_system = 1;
 				}
-				else if(left >= secondLevelLeft - 5*wp && left <= secondLevelLeft + 5*wp) 
+				else if(left >= secondLevelLeft - 5*wp && left <= secondLevelLeft + 5*wp)
 				{
 					textOutline t;
 					if(last_in_system > 0)
@@ -2546,7 +2549,7 @@ public class slidePage {
 					last = 3;
 					last_in_system = 3;
 				}
-				else 
+				else
 				{
 					textOutline t = new textOutline(list.get(i).get_text(), 0);
 					result.add(t);
@@ -2555,7 +2558,7 @@ public class slidePage {
 				}
 			}
 		}
-		
+
 		for(int i = 0; i < result.size(); i++)
 			if(result.get(i).get_hierarchy() > 0)
 			{
@@ -2563,34 +2566,34 @@ public class slidePage {
 					result.get(i).set_hierarchy(1);
 				break;
 			}
-		
+
 		return result;
 	}
-	
+
 	private ArrayList<textOutline> createTextOutlinesBySelfStats(ArrayList<textLine> list)
 	{
 		ArrayList<textOutline> result = new ArrayList<textOutline>();
-		
+
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
 		{
 			if(list.get(i).get_type() < 0)
 				list.remove(i);
 		}
-		
-		if(list.size() == 0) 
+
+		if(list.size() == 0)
 			return result;
-		
+
 		double wp = (double)this.get_pageWidth() / 1024;
 		double hp = (double)this.get_pageHeight() / 768;
-		
+
 		/* Up to 3 levels differed. (can be less)
 		 * First adaptively find the levels and then set them */
-		
+
 		int firstLevelLeft = this.get_pageWidth();
 		int secondLevelLeft = 0;
 		int thirdLevelLeft = 0;
-		
+
 		ArrayList<textLine> stats = new ArrayList<textLine>();
 		for(int i = 0; i < list.size(); i++)
 		{
@@ -2612,7 +2615,7 @@ public class slidePage {
 				stats.add(t);
 			}
 		}
-		
+
 		for(int i = 0; i < stats.size(); i++)
 			for(int j = i+1; j < stats.size(); j++)
 			{
@@ -2632,19 +2635,19 @@ public class slidePage {
 					}
 				}
 			}
-		
-		System.out.println("Adaptive Content-Tree Loading");
-		System.out.println("Most Frequent Pos: "+ stats.get(0).get_left() + " " + stats.get(0).get_count());
+
+		LoggerSingleton.info("Adaptive Content-Tree Loading");
+		LoggerSingleton.info("Most Frequent Pos: "+ stats.get(0).get_left() + " " + stats.get(0).get_count());
 		if(stats.size() > 1)
-			System.out.println("Most Frequent Pos: "+ stats.get(1).get_left() + " " + stats.get(1).get_count());
-		
+			LoggerSingleton.info("Most Frequent Pos: "+ stats.get(1).get_left() + " " + stats.get(1).get_count());
+
 		if(stats.size() > 0 && stats.get(0).get_count() > 1)
 			firstLevelLeft = stats.get(0).get_left();
-		
+
 		for(int i = 0; i < list.size(); i++)
 			if(list.get(i).get_left() > firstLevelLeft - 5*wp && list.get(i).get_left() < firstLevelLeft + 5*wp)
 			{
-				System.out.println(list.get(0).get_slideID() + ":  " + i + "  " + list.get(i).get_text());
+				LoggerSingleton.info(list.get(0).get_slideID() + ":  " + i + "  " + list.get(i).get_text());
 				break;
 			}
 
@@ -2660,7 +2663,7 @@ public class slidePage {
 						&& list.get(i).get_top() - list.get(i-1).get_bottom() < 50*hp && list.get(i-1).get_top() > this._titleLocation[3])
 					{
 						firstLevelLeft = list.get(i-1).get_left();
-						System.out.println(list.get(0).get_slideID() + ":  " + (i-1) + "  " + list.get(i-1).get_text());
+						LoggerSingleton.info(list.get(0).get_slideID() + ":  " + (i-1) + "  " + list.get(i-1).get_text());
 						meetEnd = false;
 						break;
 					}
@@ -2669,12 +2672,12 @@ public class slidePage {
 			if(meetEnd)
 				previous = false;
 		}
-		
-		
+
+
 		/* Set the 2nd and 3rd level by searching the textlines in 'system'
 		 * the target should be following a upper-level textline or
 		 * surrounding by textlines horizontally near */
-		
+
 		secondLevelLeft = this.get_pageWidth();
 		int difference = this.get_pageWidth();
 		for(int i = 1; i < list.size(); i++)
@@ -2692,10 +2695,10 @@ public class slidePage {
 					{
 						secondLevelLeft = list.get(i).get_left();
 						difference = secondLevelLeft - firstLevelLeft;
-					}							
+					}
 				}
 		}
-		
+
 		thirdLevelLeft = this.get_pageWidth();
 		difference = this.get_pageWidth();
 		for(int i = 1; i < list.size(); i++)
@@ -2708,18 +2711,18 @@ public class slidePage {
 						difference = thirdLevelLeft - secondLevelLeft;
 					}
 		}
-		
-		
+
+
 		/* Load the textOntlines here
 		 * Two judgment, one is strict and absolute on horizontal position
 		 * another is more flexible according to the context
 		 * and, footline will not be included */
-		
-		System.out.println(list.get(0).get_slideID() + ":  " + firstLevelLeft + "  " + secondLevelLeft + " " + thirdLevelLeft);
+
+		LoggerSingleton.info(list.get(0).get_slideID() + ":  " + firstLevelLeft + "  " + secondLevelLeft + " " + thirdLevelLeft);
 		this._levelCoordinates[0] = (firstLevelLeft >= 768*wp) ? -1 : firstLevelLeft;
 		this._levelCoordinates[1] = (secondLevelLeft >= this._pageWidth) ? -1 : secondLevelLeft;
 		this._levelCoordinates[2] = (thirdLevelLeft >= this._pageWidth) ? -1 : thirdLevelLeft;
-		
+
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
@@ -2758,7 +2761,7 @@ public class slidePage {
 					last = 1;
 					last_in_system = 1;
 				}
-				else if(left >= secondLevelLeft - 5*wp && left <= secondLevelLeft + 5*wp) 
+				else if(left >= secondLevelLeft - 5*wp && left <= secondLevelLeft + 5*wp)
 				{
 					textOutline t;
 					if(last_in_system > 0)
@@ -2810,7 +2813,7 @@ public class slidePage {
 					last = 3;
 					last_in_system = 3;
 				}
-				else 
+				else
 				{
 					textOutline t = new textOutline(list.get(i).get_text(), 0);
 					result.add(t);
@@ -2819,75 +2822,75 @@ public class slidePage {
 				}
 			}
 		}
-		
+
 		return result;
 	}
 
 	private ArrayList<textOutline> createTextOutlinesByCenterAlignment(ArrayList<textLine> list)
 	{
 		ArrayList<textOutline> result = new ArrayList<textOutline>();
-		
+
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
 		{
 			if(list.get(i).get_type() < 0)
 				list.remove(i);
 		}
-		
+
 		if(list.size() < 1)
 			return result;
-		
+
 		result.add(new textOutline(list.get(0).get_text(), 0));
-		System.out.println("Centered Content-Tree Loading: " + (list.get(0).get_left() + list.get(0).get_width()));
-		
+		LoggerSingleton.info("Centered Content-Tree Loading: " + (list.get(0).get_left() + list.get(0).get_width()));
+
 		for(int i = 1; i < list.size(); i++)
 		{
 			int center0 = list.get(0).get_left() + list.get(0).get_width() / 2;
 			int centerI = list.get(i).get_left() + list.get(i).get_width() / 2;
-			
+
 			if(Math.abs(center0 - centerI) < 5)
 			{
 				result.get(0).set_hierarchy(1);
 				result.add(new textOutline(list.get(i).get_text(), 1));
-			}				
+			}
 			else
 				result.add(new textOutline(list.get(i).get_text(), 0));
 		}
-		
+
 		return result;
 	}
-	
+
 	public void combineAtEnd(slidePage s)
 	{
 		/* This function is used to gather the content from two slides together.
 		 * And during the process of combination, try to avoid repeated content
 		 * to be retained twice, and try to logically rearrange the order of content
-		 * appearance for those subtopics sharing a same topic inside two slides. 
+		 * appearance for those subtopics sharing a same topic inside two slides.
 		 */
-		
+
 		//Firstly, add all contents from second slide to the end of first slide after set time info.
 		for(int i = 0; i < this.get_texts().size(); i++)
 		{
 			if(this.get_texts().get(i).get_time().before(this.get_startTime()))
 				this.get_texts().get(i).set_time(this.get_startTime());
 		}
-		
+
 		for(int i = 0; i < s.get_texts().size(); i++)
 		{
 			s.get_texts().get(i).set_time(s.get_startTime());
 			this.get_texts().add(s.get_texts().get(i));
 		}
-		
+
 		//From up to down, searching for same texts, then deleting them and reorder their subtopics.
 		for(int i = 0; i < this.get_texts().size(); i++)
 		{
 			/* Using (i, i2) and (ii, ii2) to tag where the same texts locate ( with i and ii ),
-			 * and where their subtopics end ( with i2 and ii2 ), if they exist. Then catch the 
+			 * and where their subtopics end ( with i2 and ii2 ), if they exist. Then catch the
 			 * [ii+1, ii2-1] part out of the data structure and plug them in at [i2-1], and delete ii.
 			 */
 			int ii = -1;
 			for(int j = i + 1; j < this.get_texts().size(); j++)
-			{				
+			{
 				if(this.get_texts().get(j).get_text().contentEquals(this.get_texts().get(i).get_text()))
 					if(this.get_texts().get(j).get_hierarchy() == this.get_texts().get(i).get_hierarchy())
 						if(this.get_texts().get(j).get_hierarchy() > 0)
@@ -2902,7 +2905,7 @@ public class slidePage {
 									break;
 								}
 							}
-							
+
 							if(sameParent)
 							{
 								ii = j;
@@ -2910,13 +2913,13 @@ public class slidePage {
 							}
 						}
 			}
-			
+
 			if(ii > i)
 			{
 				int i2 = ii;
 				int ii2 = this.get_texts().size();
-								
-				
+
+
 				for(int j = i + 1; j < i2; j++)
 				{
 					if(this.get_texts().get(j).get_hierarchy() == this.get_texts().get(i).get_hierarchy())
@@ -2925,7 +2928,7 @@ public class slidePage {
 						break;
 					}
 				}
-				
+
 				for(int j = ii + 1; j < ii2; j++)
 				{
 					if(this.get_texts().get(j).get_hierarchy() == this.get_texts().get(ii).get_hierarchy())
@@ -2934,48 +2937,48 @@ public class slidePage {
 						break;
 					}
 				}
-				
-				//System.out.println(i + " " + i2 + " " + ii + " " + ii2);
-				
+
+				//LoggerSingleton.info(i + " " + i2 + " " + ii + " " + ii2);
+
 				if(i2 == ii)
 					this.get_texts().remove(i2);
 				else
 				{
 					ArrayList<textOutline> insertList = new ArrayList<textOutline>();
 					ArrayList<textOutline> backUp = new ArrayList<textOutline>();
-					
+
 					for(int k = ii2 - 1; k > ii; k--)
 					{
 						insertList.add(this.get_texts().get(k));
 						this.get_texts().remove(k);
 					}
-					
+
 					for(int k = this.get_texts().size() - 1; k >= i2; k--)
 					{
 						if(k!=ii)
 							backUp.add(this.get_texts().get(k));
 						this.get_texts().remove(k);
 					}
-					
+
 					for(int k = insertList.size() - 1; k >= 0; k--)
 						this.get_texts().add(insertList.get(k));
 					insertList.clear();
-					
+
 					for(int k = backUp.size() - 1; k >= 0; k--)
 						this.get_texts().add(backUp.get(k));
 					backUp.clear();
 				}
-				
+
 			}
 		}
-		
+
 		this.isSlideWellOrganized();
-			
+
 	}
 
 	public void isSlideWellOrganized()
 	{
-		
+
 		if(get_texts().size() == 0)
 		{
 			set_pageType(-2);
@@ -2983,14 +2986,14 @@ public class slidePage {
 				set_pageType(-3);
 			return;
 		}
-		
+
 		if(get_texts().size() <= 2 && get_title().contentEquals(""))
 		{
 			if(get_texts().size() <= 1)
 				set_pageType(-2);
 			return;
 		}
-		
+
 		int count = 0;
 		for(int i = 0; i < get_texts().size(); i++)
 		{
@@ -3001,24 +3004,24 @@ public class slidePage {
 		if( count > 0 && (double)get_texts().size() / (double)count < 2.0 )
 			set_pageType(0);
 	}
-	
+
 	public boolean isSamePage(slidePage s)
 	{
 		// Mainly using Levenshtein Distance and Same Words as the requirements.
-		
+
 		algorithmInterface ai = new algorithmInterface();
-		
+
 		String allTexts1 = this.get_title();
 		for(int i = 0; i < this.get_texts().size(); i++)
 			allTexts1 = allTexts1 + " " + this.get_texts().get(i).get_text();
 
-		
+
 		String allTexts2 = s.get_title();
 		for(int i = 0; i < s.get_texts().size(); i++)
 			allTexts2 = allTexts2 + " " + s.get_texts().get(i).get_text();
-		
-		
-		
+
+
+
 		if(allTexts1.contentEquals(allTexts2))
 		{
 			return true;
@@ -3029,10 +3032,10 @@ public class slidePage {
 			int longer = allTexts1.length() > allTexts2.length() ? allTexts1.length() : allTexts2.length();
 			double lr = (double)le / (double)longer;
 			double wr = ai.getSameWordsRatio(allTexts1, allTexts2);
-			
+
 			//if(this.get_PageNum()==81 && s.get_PageNum()==83)
-				//System.out.println(lr + "  " + wr);
-			
+				//LoggerSingleton.info(lr + "  " + wr);
+
 			if(this.get_pageType() == -2 || s.get_pageType() == -2)
 			{
 				if(this.get_title().length() > 0 && this.get_title().contentEquals(s.get_title()) && longer - this.get_title().length() <= 30)
@@ -3072,38 +3075,38 @@ public class slidePage {
 				if(this.get_title().contentEquals(s.get_title()) && longer - tl > 200)
 					return true;
 			}
-			
+
 			/*only for temp
 			if( _onlyForStats_1( this.get_PageNum(), s.get_PageNum() )  )
 					// temp( this.get_PageNum(), s.get_PageNum() ) && (this.get_PageNum() <= 48 || this.get_PageNum() >= 88) && (this.get_PageNum() <= 27 || this.get_PageNum() >= 45) )
-			{				
-				//System.out.println(this.get_PageNum() + "-" + this.get_title() + ": " + allTexts1);
-				//System.out.println(s.get_PageNum() + "-" + s.get_title() + ": " + allTexts2);
-				System.out.println((int)(lr*100) + "\t" + (int)(wr*100) + "\t(" + this.get_PageNum() + ", " + s.get_PageNum() + ")");
-				//System.out.println(" Same Words Ratio: " + wr);				
-				//System.out.println();
+			{
+				//LoggerSingleton.info(this.get_PageNum() + "-" + this.get_title() + ": " + allTexts1);
+				//LoggerSingleton.info(s.get_PageNum() + "-" + s.get_title() + ": " + allTexts2);
+				LoggerSingleton.info((int)(lr*100) + "\t" + (int)(wr*100) + "\t(" + this.get_PageNum() + ", " + s.get_PageNum() + ")");
+				//LoggerSingleton.info(" Same Words Ratio: " + wr);
+				//LoggerSingleton.info();
 			}
 			*/
-			
+
 		}
-		
+
 		return false;
 	}
-	
+
 	private int searchHorizontalMiddleLine(ArrayList<textLine> list, double wp)
 	{
 		if(list.size() < 2)
 			return -1;
-		
+
 		ArrayList<int[]> xy = new ArrayList<int[]>();
 		int middle = -1;
-		
+
 		for(int i = 0; i < list.size(); i++)
 		{
 			int[] current = {list.get(i).get_left(), list.get(i).get_left()+list.get(i).get_width()};
 			xy.add(current);
 		}
-		
+
 		//Re-order: from left to right
 		for(int i = 0; i < xy.size(); i++)
 			for(int j = i+1; j < xy.size(); j++)
@@ -3115,13 +3118,13 @@ public class slidePage {
 					xy.set(j, temp);
 				}
 			}
-		
+
 		//Search for the most middle textline, whose left-edge is 'righter' than all 'lefter' textlines' right-edge.
 		for(int i = 1; i < xy.size(); i++)
 		{
 			int a = xy.get(i)[0];
 			boolean allLeft = true;
-			
+
 			for(int j = 0; j < i; j++)
 			{
 				if(xy.get(j)[1] >= a)
@@ -3130,12 +3133,12 @@ public class slidePage {
 					break;
 				}
 			}
-			
+
 			if(allLeft)
 				if( Math.abs(a-512*wp) < Math.abs(middle-512*wp))
 					middle = a;
 		}
-		
+
 		if(middle > 0)
 		{
 			boolean nowLeft = true;
@@ -3148,7 +3151,7 @@ public class slidePage {
 					nowLeft = true;
 				else
 					nowLeft = false;
-				
+
 				if(i > 0)
 				{
 					if(list.get(i-1).get_bottom() > list.get(i).get_top())
@@ -3156,30 +3159,30 @@ public class slidePage {
 					if(nowLeft != last)
 						changes++;
 				}
-					
-				
+
+
 			}
 			if(changes <= 1 && interlaces == 0)
 				middle = 0 - middle;
 		}
-		
+
 		return middle;
 	}
-	
+
 	private boolean isThisPartChaos(ArrayList<textLine> list, int middleLine, boolean left)
 	{
 		if(list.size() < 1)
 			return false;
-		
+
 		if(searchHorizontalMiddleLine(list, 1) > this._pageWidth / 8 && searchHorizontalMiddleLine(list, 1) < this._pageWidth * 0.875)
 		{
-			System.out.println("The " + (left ? "left" : "right") + " column can be split again, diagram, removed.");
+			LoggerSingleton.info("The " + (left ? "left" : "right") + " column can be split again, diagram, removed.");
 			return true;
 		}
-		
+
 		/* Check the content of either column. If there are lots of digits as independent text-lines,
 		 * it is quite possible that this column is a part of a chart, need to be ignored.
-		 * 
+		 *
 		 * And the average length of the text-lines also be found out,
 		 * if it is too small, then this column seems not to be a valuable component of this slide.
 		 */
@@ -3190,12 +3193,12 @@ public class slidePage {
 			algorithmInterface ai = new algorithmInterface();
 			totalLength += t.get_text().length();
 			if(ai.isOrderNum(t.get_text()) || ai.isStatNum(t.get_text()) || ai.isOptionNum(t.get_text()))
-				countNum++;				
+				countNum++;
 			if(i > 0)
 			{
 				if(t.get_top() < list.get(i-1).get_top() + list.get(i-1).get_height())
 					interlaced++;
-				
+
 				if(Math.min(t.get_left() + t.get_width(), list.get(i-1).get_left() + list.get(i-1).get_width()) - Math.max(t.get_left(), list.get(i-1).get_left())
 					> Math.min(t.get_width(), list.get(i-1).get_width()) * 0.66)
 					covered++;
@@ -3205,33 +3208,33 @@ public class slidePage {
 			if(t.get_left() + t.get_width() > rightMost)
 				rightMost = t.get_left() + t.get_width();
 		}
-		
-		System.out.println("Covered (" + covered + "/" + list.size() + ")");
-		
+
+		LoggerSingleton.info("Covered (" + covered + "/" + list.size() + ")");
+
 		if(middleLine < this._pageWidth * 0.25 && left)
 		{
-			System.out.println("The left column is too close to the left edge, removed.");
+			LoggerSingleton.info("The left column is too close to the left edge, removed.");
 			return true;
 		}
 		else if(middleLine > this._pageWidth * 0.75 && !left)
 		{
-			System.out.println("The right column is too close to the right edge, removed.");
+			LoggerSingleton.info("The right column is too close to the right edge, removed.");
 			return true;
 		}
 		else if(list.size() > 1 && rightMost - leftMost > 0 && rightMost - leftMost < this._pageWidth / 8)
 		{
-			System.out.println("The " + (left ? "left" : "right") + " column is too narrow, removed.");
+			LoggerSingleton.info("The " + (left ? "left" : "right") + " column is too narrow, removed.");
 			return true;
 		}
 		else if( (double)covered < (double)(list.size()-1) / 2 && list.size() > 3)
 		{
-			System.out.println("The " + (left ? "left" : "right") + " column is a potential diagram, removed.");
+			LoggerSingleton.info("The " + (left ? "left" : "right") + " column is a potential diagram, removed.");
 			return true;
 		}
 		else
 		{
 			aveLength = list.size() > 0 ? totalLength / list.size() : 0;
-			System.out.println("Column " + (left ? "Left" : "Right") + ": aveLength = " + aveLength + " totalItems = " + list.size() + " digitNum = " + countNum + "; " + interlaced + " interlaces");
+			LoggerSingleton.info("Column " + (left ? "Left" : "Right") + ": aveLength = " + aveLength + " totalItems = " + list.size() + " digitNum = " + countNum + "; " + interlaced + " interlaces");
 			if(aveLength <= 5 && list.size() > 1)
 				return true;
 			else if(aveLength < 10 && list.size() > 1 && (countNum >= list.size()/2 || aveLength < list.size()))
@@ -3239,17 +3242,17 @@ public class slidePage {
 			else if(aveLength < list.size() && interlaced > list.size() / 4)
 				return true;
 		}
-		
+
 		return false;
 	}
-	
+
 	private ArrayList<textLine> halfThisColumnWhenNeeded(ArrayList<textLine> list, boolean left)
 	{
 		if(list.size() <= 1)
 			return list;
 		else if(list.get(list.size()-1).get_bottom() - list.get(0).get_top() < this._pageHeight * 0.4)
 			return list;
-		
+
 		int aveHeight = 0, biggestLineSpace = 0, biggestLineSpacePosition = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
@@ -3265,19 +3268,19 @@ public class slidePage {
 			}
 		}
 		aveHeight = aveHeight / list.size();
-		
+
 		if(biggestLineSpace > aveHeight * 4)
 		{
 			ArrayList<textLine> upperPart = new ArrayList<textLine>();
 			ArrayList<textLine> bottomPart = new ArrayList<textLine>();
-			
+
 			for(int i = 0; i < biggestLineSpacePosition; i++)
 				upperPart.add(list.get(i));
 			for(int i = biggestLineSpacePosition; i < list.size(); i++)
 				bottomPart.add(list.get(i));
-			
+
 			boolean deleteUpper = false, deleteBottom = false;
-			
+
 			int covered = 0;
 			for(int i = 1; i < upperPart.size(); i++)
 				if(Math.min(upperPart.get(i).get_left() + upperPart.get(i).get_width(), upperPart.get(i-1).get_left() + upperPart.get(i-1).get_width())
@@ -3285,7 +3288,7 @@ public class slidePage {
 					covered++;
 			if((double)covered < (double)(upperPart.size()-1) / 2 && upperPart.size() > 2 )
 				deleteUpper = true;
-			
+
 			covered = 0;
 			for(int i = 1; i < bottomPart.size(); i++)
 				if(Math.min(bottomPart.get(i).get_left() + bottomPart.get(i).get_width(), bottomPart.get(i-1).get_left() + bottomPart.get(i-1).get_width())
@@ -3293,52 +3296,52 @@ public class slidePage {
 					covered++;
 			if((double)covered < (double)(bottomPart.size()-1) / 2 && bottomPart.size() > 2 )
 				deleteBottom = true;
-			
+
 			if(bottomPart.size() <= 2)
 				if(Math.min(bottomPart.get(0).get_left() + bottomPart.get(0).get_width(), upperPart.get(0).get_left() + upperPart.get(0).get_width())
 					- Math.max(bottomPart.get(0).get_left(), upperPart.get(0).get_left()) < Math.min(bottomPart.get(0).get_width(), upperPart.get(0).get_width()) * 0.66)
 					deleteBottom = true;
-			
+
 			if(deleteBottom && deleteUpper)
 			{
-				System.out.println("The " + (left ? "left" : "right") + " column is a potential diagram, removed.");
+				LoggerSingleton.info("The " + (left ? "left" : "right") + " column is a potential diagram, removed.");
 				list.clear();
 				return list;
 			}
 			else if(deleteBottom)
 			{
-				System.out.println("The bottom part of " + (left ? "left" : "right") + " column is a potential diagram, removed.");
+				LoggerSingleton.info("The bottom part of " + (left ? "left" : "right") + " column is a potential diagram, removed.");
 				return upperPart;
 			}
 			else if(deleteUpper)
 			{
-				System.out.println("The upper part of " + (left ? "left" : "right") + " column is a potential diagram, removed.");
+				LoggerSingleton.info("The upper part of " + (left ? "left" : "right") + " column is a potential diagram, removed.");
 				return bottomPart;
-			}			
+			}
 		}
-		
+
 		return list;
 	}
-	
-	private ArrayList<int[]> detectTable(ArrayList<textLine> list, double wp, double hp, String lectureID)
+
+	private ArrayList<int[]> detectTable(ArrayList<textLine> list, double wp, double hp, String lectureID) throws IOException
 	{
 		ArrayList<int[]> allTableArea = new ArrayList<int[]>();
 		if(list.size() < 4)
 			return allTableArea;
-		
+
 		/* search for textlines which share same row
 		 * then saving them in 2-dimension integer array
 		 * the minimal element is the textline-number in the 'list'
 		 * the process is similar but simpler than column-searching, which will be explained in detail.
 		 */
-		ArrayList<ArrayList<Integer>> potentialTableRow = new ArrayList<ArrayList<Integer>>();	
+		ArrayList<ArrayList<Integer>> potentialTableRow = new ArrayList<ArrayList<Integer>>();
 		for(int i = 0; i < list.size(); i++)
 		{
 			for(int j = i + 1; j < list.size(); j++)
 			{
 				if(list.get(i).get_top() < this._titleLocation[3] + 20*hp)
 					continue;
-				
+
 				if(list.get(i).isInSameTableRow(list.get(j)))
 				{
 					boolean done = false;
@@ -3376,23 +3379,23 @@ public class slidePage {
 					}
 				}
 			}
-		}		
-		
+		}
+
 		/* Here we create an new data structure called tableColumn, have four attributes:
 		 * columnCandidate: an integer array contain the items' number in the 'list'
 		 * align: 3 boolean bit indicating whether this column is left, right or/and center aligned
 		 * leftEdge and rightEdge: horizontal position info
 		 */
 		class tableColumn{
-			
+
 			public tableColumn(){}
-			
+
 			private ArrayList<Integer> columnCandidates = new ArrayList<Integer>();
 			private boolean[] align = {false, false, false};
 			private int leftEdge = -1;
 			private int rightEdge = -1;
 			private int aveHeight = -1;
-			
+
 			public ArrayList<Integer> getColumnCandidates() {
 				return columnCandidates;
 			}
@@ -3417,19 +3420,19 @@ public class slidePage {
 			public void setRightEdge(int rightEdge) {
 				this.rightEdge = rightEdge;
 			}
-		
+
 			public int getAveHeight() {
 				return aveHeight;
 			}
 			public void setAveHeight(int aveHeight) {
 				this.aveHeight = aveHeight;
 			}
-			
+
 			public int getColumnWidth()
 			{
 				return this.rightEdge - this.leftEdge;
 			}
-			
+
 			public boolean leftThan(tableColumn that)
 			{
 				if(this.getLeftEdge() >= that.getRightEdge())
@@ -3445,27 +3448,27 @@ public class slidePage {
 						lineThis = this.getRightEdge();
 					else
 						lineThis = (this.getLeftEdge() + this.getRightEdge())/2;
-					
+
 					if(that.getAlign()[0])
 						lineThat = that.getLeftEdge();
 					else if(that.getAlign()[1])
 						lineThat = that.getRightEdge();
 					else
 						lineThat = (that.getLeftEdge() + that.getRightEdge())/2;
-					
+
 					if(lineThis < lineThat)
 						return true;
 					else
 						return false;
 				}
 			}
-			
+
 			public tableColumn combineColumn(tableColumn that, ArrayList<textLine> list)
 			{
 				tableColumn newColumn = new tableColumn();
 				tableColumn c1 = this;
 				tableColumn c2 = that;
-				
+
 				ArrayList<Integer> newColumnCandidates = new ArrayList<Integer>();
 				for(int x = 0, y = 0; x < c1.getColumnCandidates().size() && y < c2.getColumnCandidates().size();)
 				{
@@ -3506,18 +3509,18 @@ public class slidePage {
 						}
 					}
 				}
-				
+
 				newColumn.setColumnCandidates(newColumnCandidates);
 				newColumn.setAlign(c1.getAlign());
 				newColumn.setLeftEdge(Math.min(c1.getLeftEdge(), c2.getLeftEdge()));
 				newColumn.setRightEdge(Math.max(c1.getRightEdge(), c2.getRightEdge()));
-				newColumn.setAveHeight((c1.getAveHeight()*c1.getColumnCandidates().size() + c2.getAveHeight()*c2.getColumnCandidates().size()) 
+				newColumn.setAveHeight((c1.getAveHeight()*c1.getColumnCandidates().size() + c2.getAveHeight()*c2.getColumnCandidates().size())
 						/ (c1.getColumnCandidates().size() + c2.getColumnCandidates().size()));
-				
+
 				return newColumn;
 			}
 		}
-		
+
 		/* search for textlines which share same column
 		 * then saving them in tableColumn array, the process can be described as:
 		 * 1. Compare each textline-pair in the list, taking 'i' and 'j' to do this loop.
@@ -3527,14 +3530,14 @@ public class slidePage {
 		 * 4. If only one textline in the existing tableColumn, add the other one, and update column attribute.
 		 * 5. If neither of the textlines in the pair belongs to any existing column, create a new one, and add these two.
 		 */
-		ArrayList<tableColumn> potentialTableColumn = new ArrayList<tableColumn>();		
+		ArrayList<tableColumn> potentialTableColumn = new ArrayList<tableColumn>();
 		for(int j = 1; j < list.size(); j++)
 		{
 			for(int i = j - 1; i >= 0; i--)
 			{
 				if(list.get(i).get_top() < this._titleLocation[3] + 20*hp)
 					continue;
-				
+
 				boolean[] alignResult = list.get(i).isInSameColumn(list.get(j), false, true);
 				if(alignResult[0] || alignResult[1] || alignResult[2])
 				{
@@ -3545,10 +3548,10 @@ public class slidePage {
 						{
 							if( i == potentialTableColumn.get(k).getColumnCandidates().get(l))
 							{
-								if( (alignResult[0] & potentialTableColumn.get(k).getAlign()[0]) 
+								if( (alignResult[0] & potentialTableColumn.get(k).getAlign()[0])
 								 || (alignResult[1] & potentialTableColumn.get(k).getAlign()[1])
 								 || (alignResult[2] & potentialTableColumn.get(k).getAlign()[2]))
-								{									
+								{
 									for(int m = 0; m < potentialTableColumn.get(k).getColumnCandidates().size(); m++)
 									{
 										if( j == potentialTableColumn.get(k).getColumnCandidates().get(m))
@@ -3572,8 +3575,8 @@ public class slidePage {
 													potentialTableColumn.get(k).setLeftEdge(list.get(j).get_left());
 												if(list.get(j).get_left() + list.get(j).get_width() > potentialTableColumn.get(k).getRightEdge())
 													potentialTableColumn.get(k).setRightEdge(list.get(j).get_left() + list.get(j).get_width());
-												
-											}	
+
+											}
 										done = true;
 										break;
 									}
@@ -3592,25 +3595,25 @@ public class slidePage {
 					{
 						if((list.get(j).get_height() >= list.get(i).get_height() * 1.5) || (list.get(i).get_height() >= list.get(j).get_height() * 1.5))
 							continue;
-						
+
 						ArrayList<Integer> newColumnCandidates = new ArrayList<Integer>();
 						newColumnCandidates.add(i);
 						newColumnCandidates.add(j);
-						
+
 						tableColumn newColumn = new tableColumn();
 						newColumn.setColumnCandidates(newColumnCandidates);
 						newColumn.setAlign(alignResult);
 						newColumn.setLeftEdge(list.get(i).get_left() < list.get(j).get_left() ? list.get(i).get_left() : list.get(j).get_left());
-						newColumn.setRightEdge(list.get(i).get_left() + list.get(i).get_width() > list.get(j).get_left() + list.get(j).get_width() 
+						newColumn.setRightEdge(list.get(i).get_left() + list.get(i).get_width() > list.get(j).get_left() + list.get(j).get_width()
 												? list.get(i).get_left() + list.get(i).get_width() : list.get(j).get_left() + list.get(j).get_width());
 						newColumn.setAveHeight((list.get(i).get_height() + list.get(j).get_height())/2);
-						
+
 						potentialTableColumn.add(newColumn);
-					}					
+					}
 				}
 			}
 		}
-		
+
 		//order the columns from left to right by their location info
 		for(int i = 0; i < potentialTableColumn.size(); i++)
 			for(int j = i + 1; j < potentialTableColumn.size(); j++)
@@ -3621,16 +3624,16 @@ public class slidePage {
 					potentialTableColumn.set(i, potentialTableColumn.get(j));
 					potentialTableColumn.set(j, temp);
 				}
-		
+
 		/* Here we need to combine overlapped columns, it happens because of OCR error
 		 * When the left column's right-edge is to the right of the right column's left-edage: overlapped and need to be judged.
 		 * 2 boolean judgments: 'share' and 'separate' used to decide whether these two columns should be combined:
 		 * 'share' means whether there is a textline shared by two column (different alignment, possible), which prove a combination
 		 * 'separate' means whether there are two textline from different column but sharing the same row, which deny a combination
 		 * So the combine prerequisite is: separate == false OR share == true;
-		 * 
+		 *
 		 * When combining, also use 'Merge sort'.
-		 * 
+		 *
 		 */
 		for(int j = 0; j < potentialTableColumn.size()-1; j++)
 		{
@@ -3646,7 +3649,7 @@ public class slidePage {
 						{
 							if(potentialTableColumn.get(j).getColumnCandidates().get(k) == potentialTableColumn.get(h).getColumnCandidates().get(l))
 							{
-								if( (potentialTableColumn.get(j).getAlign()[0] & potentialTableColumn.get(h).getAlign()[0]) 
+								if( (potentialTableColumn.get(j).getAlign()[0] & potentialTableColumn.get(h).getAlign()[0])
 								 || (potentialTableColumn.get(j).getAlign()[1] & potentialTableColumn.get(h).getAlign()[1])
 								 || (potentialTableColumn.get(j).getAlign()[2] & potentialTableColumn.get(h).getAlign()[2]) )
 								{
@@ -3666,7 +3669,7 @@ public class slidePage {
 									{
 										//System.out.print("!!!!! Delete Column " + less + "; before " + potentialTableColumn.size() + ", ");
 										potentialTableColumn.remove(less);
-										//System.out.println("after " + potentialTableColumn.size());										
+										//LoggerSingleton.info("after " + potentialTableColumn.size());
 										restart = true;
 										break;
 									}
@@ -3701,19 +3704,19 @@ public class slidePage {
 					}
 					if(restart)
 						break;
-					
+
 					int atop = list.get(potentialTableColumn.get(j).getColumnCandidates().get(0)).get_top();
 					int abottom = list.get(potentialTableColumn.get(j).getColumnCandidates().get(potentialTableColumn.get(j).getColumnCandidates().size()-1)).get_bottom();
 					int btop = list.get(potentialTableColumn.get(h).getColumnCandidates().get(0)).get_top();
 					int bbottom = list.get(potentialTableColumn.get(h).getColumnCandidates().get(potentialTableColumn.get(h).getColumnCandidates().size()-1)).get_bottom();
 					if((atop - bbottom) * (abottom - btop) < 0)
 						interlaced = true;
-					
+
 					int covered = Math.min(potentialTableColumn.get(j).getRightEdge(), potentialTableColumn.get(h).getRightEdge())
 							- Math.max(potentialTableColumn.get(j).getLeftEdge(), potentialTableColumn.get(h).getLeftEdge());
 					if(covered > Math.min(potentialTableColumn.get(j).getColumnWidth(), potentialTableColumn.get(h).getColumnWidth()) * 0.66)
 					{
-						if( (potentialTableColumn.get(j).getAlign()[0] & potentialTableColumn.get(h).getAlign()[0]) 
+						if( (potentialTableColumn.get(j).getAlign()[0] & potentialTableColumn.get(h).getAlign()[0])
 						 || (potentialTableColumn.get(j).getAlign()[1] & potentialTableColumn.get(h).getAlign()[1])
 						 || (potentialTableColumn.get(j).getAlign()[2] & potentialTableColumn.get(h).getAlign()[2]) )
 						{
@@ -3736,16 +3739,16 @@ public class slidePage {
 										   Math.min(potentialTableColumn.get(h).getAveHeight(), potentialTableColumn.get(j).getAveHeight()) * 1.25)
 											fullyCovered = true;
 								}
-							}							
-						}						
+							}
+						}
 					}
-					
+
 					if(!seperat && (share || interlaced || fullyCovered))
 					{
 						tableColumn newColumn = new tableColumn();
 						newColumn = potentialTableColumn.get(j).combineColumn(potentialTableColumn.get(h), list);
 						//System.out.print("!!!!! Combine Column " + j + " and " + h + "; before " + potentialTableColumn.size() + ", ");
-						
+
 						ArrayList<tableColumn> temp = new ArrayList<tableColumn>();
 						for(int k = 0; k < j; k++)
 							temp.add(potentialTableColumn.get(k));
@@ -3756,8 +3759,8 @@ public class slidePage {
 							temp.add(potentialTableColumn.get(k));
 						potentialTableColumn.clear();
 						potentialTableColumn = temp;
-						
-						//System.out.println("after " + potentialTableColumn.size());
+
+						//LoggerSingleton.info("after " + potentialTableColumn.size());
 						j = -1;
 						break;
 					}
@@ -3768,8 +3771,8 @@ public class slidePage {
 			if(restart)
 				j = -1;
 		}
-		
-				
+
+
 		/*  crossedItem indicate a textline both in a row and a column detected above,
 		 *  they are the foundational table item searching pool.
 		 *  3 elements in crossedItemsInfo: [textlineNr in the list, RowNr, ColumnNr]
@@ -3788,12 +3791,12 @@ public class slidePage {
 						}
 					}
 			}
-		
+
 		/* slip those crossed items into groups, by shared row or column.
 		 * The process is easy: build first group by the first crossedItem, then check the next item on
 		 * whether it shares a same row or same column with any item already concluded in the group.
 		 * If so, add the current to the certain group, otherwise build a new group by the current item.
-		 * 
+		 *
 		 * the groups save in 2-dimension array, first dimension is group, second is crossedItem, which contain 3 elements.
 		 */
 		ArrayList<ArrayList<int[]>> supposedTableItemsGroup = new ArrayList<ArrayList<int[]>>();
@@ -3807,8 +3810,8 @@ public class slidePage {
 				supposedTableItemsGroup.add(newGroup);
 				continue;
 			}
-			
-			boolean needNewGroup = true;			
+
+			boolean needNewGroup = true;
 			for(int j = 0; j < supposedTableItemsGroup.size(); j++)
 			{
 				for(int k = 0; k < supposedTableItemsGroup.get(j).size(); k++)
@@ -3821,7 +3824,7 @@ public class slidePage {
 					}
 				}
 			}
-			
+
 			if(needNewGroup)
 			{
 				ArrayList<int[]> newGroup = new ArrayList<int[]>();
@@ -3829,9 +3832,9 @@ public class slidePage {
 				supposedTableItemsGroup.add(newGroup);
 			}
 		}
-		
+
 		/* for some reason, groups logically overlap and need to be combined.
-		 * 
+		 *
 		 * 'i' and 'j' used to go over all the groups
 		 * 'k' and 'l' used to go over all the items in group(i) and group(j)
 		 * if there's any shared item in two groups, combine them together
@@ -3893,7 +3896,7 @@ public class slidePage {
 								supposedTableItemsGroup.remove(j);
 								combine = true;
 								break;
-							}							
+							}
 						}
 						if(combine)
 							break;
@@ -3906,9 +3909,9 @@ public class slidePage {
 		for(int x = 0; x < supposedTableItemsGroup.size(); x++)
 		{
 			if(x == 0)
-				System.out.println("^^^^Crossed Items^^^^");
-			
-			System.out.println("Group " + (x+1) + ":");
+				LoggerSingleton.info("^^^^Crossed Items^^^^");
+
+			LoggerSingleton.info("Group " + (x+1) + ":");
 			for(int i = 0; i < potentialTableRow.size(); i++)
 			{
 				for(int j = 0; j < potentialTableRow.get(i).size(); j++)
@@ -3920,29 +3923,29 @@ public class slidePage {
 							break;
 						}
 				}
-				System.out.println();
+				LoggerSingleton.info();
 			}
-			
+
 			if(x == supposedTableItemsGroup.size() - 1)
-				System.out.println("^^^^Crossed Items End^^^^");
+				LoggerSingleton.info("^^^^Crossed Items End^^^^");
 		}
 		*/
 		/* Now draw a rectangle for each crossed item group. Make it an area.
-		 * 
+		 *
 		 * Then search inside the area to find any textlines inside the area
 		 * but not "crossed". Such situation happens when the accuracy of OCR
 		 * is not so high. The textline found will be added into the group.
-		 * 
+		 *
 		 * Please note: only when a textline belong to row or column, it may be added.
-		*/ 
+		*/
 		for(int i = 0; i < supposedTableItemsGroup.size(); i++)
 		{
 			if(supposedTableItemsGroup.get(i).size() <= 1)
 				continue;
-			
+
 			int[] tableEdge = {-1, -1, -1, -1};
 			for(int j = 0; j < supposedTableItemsGroup.get(i).size(); j++)
-			{				
+			{
 				textLine current = list.get(supposedTableItemsGroup.get(i).get(j)[0]);
 				if(tableEdge[0] < 0 || current.get_left() < tableEdge[0])
 					tableEdge[0] = current.get_left();
@@ -3951,9 +3954,9 @@ public class slidePage {
 				if(tableEdge[2] < 0 || current.get_top() < tableEdge[2])
 					tableEdge[2] = current.get_top();
 				if(tableEdge[3] < 0 || current.get_bottom() > tableEdge[3])
-					tableEdge[3] = current.get_bottom();				
+					tableEdge[3] = current.get_bottom();
 			}
-			
+
 			ArrayList<int[]> newGroup = new ArrayList<int[]>();
 			for(int j = 0; j < list.size(); j++)
 			{
@@ -3974,7 +3977,7 @@ public class slidePage {
 								columnNum = k;
 								break;
 							}
-					
+
 					if(rowNum >= 0 && columnNum >= 0)
 					{
 						int[] cell = {j, rowNum, columnNum};
@@ -3985,14 +3988,14 @@ public class slidePage {
 						ArrayList<Integer> newColumnCandidates = new ArrayList<Integer>();
 						newColumnCandidates.add(j);
 						boolean[] alignResult = {false, false, true};
-						
+
 						tableColumn newColumn = new tableColumn();
 						newColumn.setColumnCandidates(newColumnCandidates);
 						newColumn.setAlign(alignResult);
 						newColumn.setLeftEdge(list.get(j).get_left());
 						newColumn.setRightEdge(list.get(j).get_left() + list.get(j).get_width());
 						newColumn.setAveHeight(list.get(j).get_height());
-						
+
 						for(int k = 0; k < potentialTableColumn.size(); k++)
 						{
 							if(newColumn.leftThan(potentialTableColumn.get(k)))
@@ -4006,15 +4009,15 @@ public class slidePage {
 									temp.add(newColumn);
 									for(int l = k; l < potentialTableColumn.size(); l++)
 										temp.add(potentialTableColumn.get(l));
-									
+
 									for(int l = 0; l < newGroup.size(); l++)
 										if(newGroup.get(l)[2] >= k)
 											newGroup.get(l)[2]++;
-									
+
 									int[] cell = {j, rowNum, k};
 									newGroup.add(cell);
-									//System.out.println("!!!ADDING NEW COLUMN: " + list.get(j).get_text());
-									
+									//LoggerSingleton.info("!!!ADDING NEW COLUMN: " + list.get(j).get_text());
+
 									potentialTableColumn.clear();
 									potentialTableColumn = temp;
 									break;
@@ -4029,15 +4032,15 @@ public class slidePage {
 											seperate = true;
 											break;
 										}
-									
+
 									if(!seperate)
 									{
 										newColumn = newColumn.combineColumn(potentialTableColumn.get(k), list);
 										potentialTableColumn.set(k, newColumn);
 										int[] cell = {j, rowNum, k};
 										newGroup.add(cell);
-										//System.out.println("!!!ITEM < " + list.get(j).get_text() + " > ADDED TO COLUMN " + k);
-									}									
+										//LoggerSingleton.info("!!!ITEM < " + list.get(j).get_text() + " > ADDED TO COLUMN " + k);
+									}
 									break;
 								}
 								else if(k > 0 && newColumn.getLeftEdge() < potentialTableColumn.get(k-1).getRightEdge()
@@ -4050,28 +4053,28 @@ public class slidePage {
 											seperate = true;
 											break;
 										}
-									
+
 									if(!seperate)
 									{
 										newColumn = newColumn.combineColumn(potentialTableColumn.get(k-1), list);
 										potentialTableColumn.set(k-1, newColumn);
 										int[] cell = {j, rowNum, k-1};
 										newGroup.add(cell);
-										//System.out.println("!!!ITEM < " + list.get(j).get_text() + " > ADDED TO COLUMN " + (k-1));
+										//LoggerSingleton.info("!!!ITEM < " + list.get(j).get_text() + " > ADDED TO COLUMN " + (k-1));
 									}
 									break;
 								}
 								else
 									break;
 							}
-						}						
+						}
 					}
 					else if(columnNum >= 0)
 					{
 						/*
 						ArrayList<Integer> newTableRow = new ArrayList<Integer>();
 						newTableRow.add(j);
-						
+
 						for(int k = 0; k < potentialTableRow.size(); k++)
 						{
 							if(list.get(j).get_bottom() < list.get(potentialTableRow.get(k).get(0)).get_top())
@@ -4082,35 +4085,35 @@ public class slidePage {
 								temp.add(newTableRow);
 								for(int l = k; l < potentialTableRow.size(); l++)
 									temp.add(potentialTableRow.get(l));
-								
+
 								for(int l = 0; l < newGroup.size(); l++)
 									if(newGroup.get(l)[1] >= k)
 										newGroup.get(l)[1]++;
-								
+
 								int[] cell = {j, k, columnNum};
 								newGroup.add(cell);
-								System.out.println("!!!ADDING ROW: " + list.get(j).get_text());
-								
+								LoggerSingleton.info("!!!ADDING ROW: " + list.get(j).get_text());
+
 								potentialTableRow.clear();
 								potentialTableRow = temp;
 								break;
 							}
 						}
 						*/
-					}					
+					}
 				}
 			}
 			supposedTableItemsGroup.get(i).clear();
-			supposedTableItemsGroup.set(i, newGroup);			
+			supposedTableItemsGroup.set(i, newGroup);
 		}
-		
+
 		/*
 		for(int x = 0; x < supposedTableItemsGroup.size(); x++)
 		{
 			if(x == 0)
-				System.out.println("^^^^Crossed Items Final^^^^");
-			
-			System.out.println("Group " + (x+1) + ":");
+				LoggerSingleton.info("^^^^Crossed Items Final^^^^");
+
+			LoggerSingleton.info("Group " + (x+1) + ":");
 			for(int i = 0; i < potentialTableRow.size(); i++)
 			{
 				for(int j = 0; j < potentialTableRow.get(i).size(); j++)
@@ -4122,14 +4125,14 @@ public class slidePage {
 							break;
 						}
 				}
-				System.out.println();
+				LoggerSingleton.info();
 			}
-			
+
 			if(x == supposedTableItemsGroup.size() - 1)
-				System.out.println("^^^^Crossed Items Final End^^^^");
+				LoggerSingleton.info("^^^^Crossed Items Final End^^^^");
 		}
 		*/
-		
+
 		//Here we check whether a potential table area is really a table, remove the fake ones
 		//The whole process is complicated, so we explain it step by step
 		for(int i = 0; i < supposedTableItemsGroup.size(); i++)
@@ -4140,7 +4143,7 @@ public class slidePage {
 				i--;
 				continue;
 			}
-			
+
 			/* Two tasks here in this traversal process:
 			 * 1. find all columns and all rows in this group, build a X*Y table prototype.
 			 * 2. calculate item mark (how possible to be a table item) by its text type and length
@@ -4156,10 +4159,10 @@ public class slidePage {
 					{
 						newColumn = false;
 						break;
-					}				
+					}
 				if(newColumn)
 					allColumn.add(supposedTableItemsGroup.get(i).get(j)[2]);
-				
+
 				boolean newRow = true;
 				for(int k = 0; k < allRow.size(); k++)
 					if(allRow.get(k) == supposedTableItemsGroup.get(i).get(j)[1])
@@ -4167,10 +4170,10 @@ public class slidePage {
 						newRow = false;
 						break;
 					}
-				
+
 				if(newRow)
 					allRow.add(supposedTableItemsGroup.get(i).get(j)[1]);
-				
+
 				textLine current = list.get(supposedTableItemsGroup.get(i).get(j)[0]);
 				algorithmInterface ai = new algorithmInterface();
 				double mark = 0;
@@ -4193,7 +4196,7 @@ public class slidePage {
 					else
 						mark = 0;
 				}
-				fullMark += mark;					
+				fullMark += mark;
 			}
 			if(allColumn.size() > 1)
 				for(int j = 0; j < allColumn.size(); j++)
@@ -4204,18 +4207,18 @@ public class slidePage {
 							allColumn.set(k, allColumn.get(j));
 							allColumn.set(j, temp);
 						}
-			
+
 			double aveMark = fullMark/(double)supposedTableItemsGroup.get(i).size();
-			
-			
-			
+
+
+
 			//columnBonus: if all item in a column are numbers or single-word, this group is much more possible to be a real table.
 			double columnBonus = 0;
 			for(int j = 0; j < allColumn.size(); j++)
 			{
 				if(potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size() < 4)
 					continue;
-				
+
 				int totalNum = 0; int totalSingleWord = 0;
 				for(int k = 0; k < potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size(); k++)
 				{
@@ -4226,19 +4229,19 @@ public class slidePage {
 					else if(!list.get(current).get_text().contains(" "))
 						totalSingleWord++;
 				}
-				
+
 				double tolorentRate = 0;
 				if(potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size() >= 6)
 					tolorentRate = 0.5;
 				else if(potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size() >= 4)
 					tolorentRate = 0.34;
-				
+
 				if(totalNum * (1 + tolorentRate) >= potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size())
 					columnBonus += 1.01;
 				else if(totalSingleWord * (1 + tolorentRate) >= potentialTableColumn.get(allColumn.get(j)).getColumnCandidates().size())
 					columnBonus += 0.5;
 			}
-			
+
 			//distanceDeduction: if neighboring columns are far away, less possible to be a table.
 			double distanceDeduction = 0;
 			for(int j = 0; j < allColumn.size()-1; j++)
@@ -4253,16 +4256,16 @@ public class slidePage {
 							overlap = true;
 					if(overlap)
 						continue;
-					
+
 					int gap = potentialTableColumn.get(allColumn.get(j+1)).getLeftEdge() - potentialTableColumn.get(allColumn.get(j)).getRightEdge();
 					int width = Math.min(potentialTableColumn.get(allColumn.get(j)).getColumnWidth(), potentialTableColumn.get(allColumn.get(j+1)).getColumnWidth());
-					//System.out.println("**** Gap: " + gap + "; Width: " + width);
+					//LoggerSingleton.info("**** Gap: " + gap + "; Width: " + width);
 					if(gap < width/2)
 					{
 						distanceDeduction -= 0.2;
 						continue;
 					}
-					
+
 					width = Math.max(width, this._pageWidth/8);
 					if(gap > width * 3)
 						distanceDeduction += 3;
@@ -4274,10 +4277,10 @@ public class slidePage {
 						distanceDeduction += 0.5;
 					else if(gap > width)
 						distanceDeduction += 0.2;
-					
+
 				}
 			}
-			
+
 			//If there's only two columns, they are more likely to be multi-column text layout system, not a table
 			double twoColumnTextDeduction = 0;
 			if(allColumn.size() == 2)
@@ -4297,13 +4300,13 @@ public class slidePage {
 							twoColumnTextDeduction = twoColumnTextDeduction - 2 < 0 ? 0 : twoColumnTextDeduction - 1;
 						if(list.get(supposedTableItemsGroup.get(i).get(0)[0]).get_top() > this._pageHeight * 0.55)
 							twoColumnTextDeduction = twoColumnTextDeduction - 1 < 0 ? 0 : twoColumnTextDeduction - 1;
-					}					
+					}
 				}
 			}
-				
-			//System.out.println("Group " + (i+1) + ": " + allRow.size() + " rows, " + allColumn.size() + " columns, Final Mark: " + (aveMark + columnBonus - distanceDeduction - twoColumnTextDeduction));
-			//System.out.println("\tcontentMark " + aveMark + ", specialColumnBonus " + columnBonus + ", gapDeduction " + distanceDeduction + ", specialDeduction " + twoColumnTextDeduction);
-			
+
+			//LoggerSingleton.info("Group " + (i+1) + ": " + allRow.size() + " rows, " + allColumn.size() + " columns, Final Mark: " + (aveMark + columnBonus - distanceDeduction - twoColumnTextDeduction));
+			//LoggerSingleton.info("\tcontentMark " + aveMark + ", specialColumnBonus " + columnBonus + ", gapDeduction " + distanceDeduction + ", specialDeduction " + twoColumnTextDeduction);
+
 			//consider all factors and then remove fake tables.
 			aveMark = aveMark + columnBonus - distanceDeduction - twoColumnTextDeduction;
 			if((allColumn.size() < 2 || allRow.size() < 2 ) && aveMark < 2)
@@ -4322,7 +4325,7 @@ public class slidePage {
 			{
 				if(distanceDeduction >= 1.5)
 				{
-					boolean removeOneRowAndRetry = false;					
+					boolean removeOneRowAndRetry = false;
 					for(int j = allColumn.size()-1; j > 0; j--)
 					{
 						int gap = potentialTableColumn.get(allColumn.get(j)).getLeftEdge() - potentialTableColumn.get(allColumn.get(j-1)).getRightEdge();
@@ -4331,7 +4334,7 @@ public class slidePage {
 						int width = Math.min(potentialTableColumn.get(allColumn.get(j)).getColumnWidth(), potentialTableColumn.get(allColumn.get(j-1)).getColumnWidth());
 						width = Math.max(width, this._pageWidth/8);
 						if(gap > width * 1.75)
-						{							
+						{
 							int cellInRight = 0, cellInLeft = 0;
 							for(int k = 0; k < supposedTableItemsGroup.get(i).size(); k++)
 							{
@@ -4340,13 +4343,13 @@ public class slidePage {
 								else if(supposedTableItemsGroup.get(i).get(k)[2] == allColumn.get(j))
 									cellInRight++;
 							}
-							//System.out.println("****" + j + '\t' + cellInLeft + '\t' + cellInRight);
+							//LoggerSingleton.info("****" + j + '\t' + cellInLeft + '\t' + cellInRight);
 							if(cellInRight <= 1 || cellInRight < cellInLeft/3)
 							{
 								for(int k = 0; k < supposedTableItemsGroup.get(i).size(); k++)
 									if(supposedTableItemsGroup.get(i).get(k)[2] == allColumn.get(j))
 									{
-										//System.out.println("****Remove <" + list.get(supposedTableItemsGroup.get(i).get(k)[0]).get_text() + "> and retry this area****");
+										//LoggerSingleton.info("****Remove <" + list.get(supposedTableItemsGroup.get(i).get(k)[0]).get_text() + "> and retry this area****");
 										supposedTableItemsGroup.get(i).remove(k);
 										removeOneRowAndRetry = true;
 										k--;
@@ -4359,7 +4362,7 @@ public class slidePage {
 								for(int k = 0; k < supposedTableItemsGroup.get(i).size(); k++)
 									if(supposedTableItemsGroup.get(i).get(k)[2] == allColumn.get(j-1))
 									{
-										//System.out.println("****Remove <" + list.get(supposedTableItemsGroup.get(i).get(k)[0]).get_text() + "> and retry this area****");
+										//LoggerSingleton.info("****Remove <" + list.get(supposedTableItemsGroup.get(i).get(k)[0]).get_text() + "> and retry this area****");
 										supposedTableItemsGroup.get(i).remove(k);
 										removeOneRowAndRetry = true;
 										k--;
@@ -4372,14 +4375,14 @@ public class slidePage {
 					if(removeOneRowAndRetry)
 						continue;
 				}
-					
+
 				supposedTableItemsGroup.remove(i);
 				i--;
 				continue;
 			}
-			
+
 		}
-		
+
 		/* Here extend the confirmed table area by searching nearby text
 		 * First, find all columns and rows, and calculate an initial table area.
 		 * Then, find the largest column gap between existing columns and calculate an average row height (including the text and the gap)
@@ -4402,20 +4405,20 @@ public class slidePage {
 					{
 						newColumn = false;
 						break;
-					}				
+					}
 				if(newColumn)
 					allColumn.add(supposedTableItemsGroup.get(i).get(j)[2]);
-				
+
 				boolean newRow = true;
 				for(int k = 0; k < allRow.size(); k++)
 					if(allRow.get(k) == supposedTableItemsGroup.get(i).get(j)[1])
 					{
 						newRow = false;
 						break;
-					}				
+					}
 				if(newRow)
 					allRow.add(supposedTableItemsGroup.get(i).get(j)[1]);
-				
+
 				textLine current = list.get(supposedTableItemsGroup.get(i).get(j)[0]);
 				if(tableEdge[0] < 0 || current.get_left() < tableEdge[0])
 					tableEdge[0] = current.get_left();
@@ -4424,15 +4427,15 @@ public class slidePage {
 				if(tableEdge[2] < 0 || current.get_top() < tableEdge[2])
 					tableEdge[2] = current.get_top();
 				if(tableEdge[3] < 0 || current.get_bottom() > tableEdge[3])
-					tableEdge[3] = current.get_bottom();				
+					tableEdge[3] = current.get_bottom();
 			}
-			//System.out.println("Table Area: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
+			//LoggerSingleton.info("Table Area: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
 			if((tableEdge[0] > tableEdge[1]) || (tableEdge[2] > tableEdge[3]))
 			{
-				System.out.println("Table Detection Error!");
+				LoggerSingleton.info("Table Detection Error!");
 				continue;
 			}
-			
+
 			if(allColumn.size() > 1)
 				for(int j = 0; j < allColumn.size(); j++)
 					for(int k = j+1; k < allColumn.size(); k++)
@@ -4442,7 +4445,7 @@ public class slidePage {
 							allColumn.set(k, allColumn.get(j));
 							allColumn.set(j, temp);
 						}
-			
+
 			int biggestColumnGap = 0;
 			for(int j = 0; j < allColumn.size()-1; j++)
 			{
@@ -4453,13 +4456,13 @@ public class slidePage {
 				if(potentialTableColumn.get(allColumn.get(j+1)).getLeftEdge() - potentialTableColumn.get(allColumn.get(j)).getRightEdge() > biggestColumnGap)
 					biggestColumnGap = potentialTableColumn.get(allColumn.get(j+1)).getLeftEdge() - potentialTableColumn.get(allColumn.get(j)).getRightEdge();
 			}
-			
+
 			int aveRowHeight = (tableEdge[3] - tableEdge[2]) / allRow.size();
-			
+
 			boolean stable = false;
 			while(!stable)
 			{
-				//System.out.println("Table Area: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+				//LoggerSingleton.info("Table Area: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 				stable = true;
 				for(int j = 0; j < allRow.size(); j++)
 				{
@@ -4472,19 +4475,19 @@ public class slidePage {
 							{
 								if(current.get_left() < tableEdge[0] && current.get_left() + current.get_width() > tableEdge[1])
 									continue;
-								
+
 								double bonusRate = 1;
 								algorithmInterface ai = new algorithmInterface();
 								if(ai.isStatNum(current.get_text()))
 									bonusRate = 2;
 								else if(!current.get_text().contains(" "))
 									bonusRate = 1.5;
-								
+
 								if(current.get_left() + current.get_width() < tableEdge[0])
 								{
 									if(tableEdge[0] - current.get_left() - current.get_width() <= biggestColumnGap * 1.5 * bonusRate)
 									{
-										//System.out.println("---left---" + current.get_text());
+										//LoggerSingleton.info("---left---" + current.get_text());
 										if(current.get_left() < tableEdge[0])
 											tableEdge[0] = current.get_left();
 										if(current.get_top() < tableEdge[2])
@@ -4492,14 +4495,14 @@ public class slidePage {
 										if(current.get_bottom() > tableEdge[3])
 											tableEdge[3] = current.get_bottom();
 										stable = false;
-										//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+										//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 									}
 								}
 								else if(current.get_left() > tableEdge[1])
 								{
 									if(current.get_left() - tableEdge[1] <= biggestColumnGap * 1.5 * bonusRate)
 									{
-										//System.out.println("---right---" + current.get_text());
+										//LoggerSingleton.info("---right---" + current.get_text());
 										if(current.get_left() + current.get_width() > tableEdge[1])
 											tableEdge[1] = current.get_left() + current.get_width();
 										if(current.get_top() < tableEdge[2])
@@ -4507,13 +4510,13 @@ public class slidePage {
 										if(current.get_bottom() > tableEdge[3])
 											tableEdge[3] = current.get_bottom();
 										stable = false;
-										//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+										//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 									}
 								}
 							}
 							else
 							{
-								//System.out.println("---row cover---" + current.get_text());
+								//LoggerSingleton.info("---row cover---" + current.get_text());
 								if(current.get_left() < tableEdge[0])
 									tableEdge[0] = current.get_left();
 								if(current.get_left() + current.get_width() > tableEdge[1])
@@ -4523,7 +4526,7 @@ public class slidePage {
 								if(current.get_bottom() > tableEdge[3])
 									tableEdge[3] = current.get_bottom();
 								stable = false;
-								//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+								//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 							}
 						}
 					}
@@ -4539,7 +4542,7 @@ public class slidePage {
 							{
 								if(current.get_left() < tableEdge[0] && current.get_left() + current.get_width() > tableEdge[1])
 									continue;
-								
+
 								double bonusRate = 1;
 								algorithmInterface ai = new algorithmInterface();
 								if(ai.isStatNum(current.get_text()))
@@ -4553,7 +4556,7 @@ public class slidePage {
 									else if(j < allColumn.size()-1 && current.get_left() + current.get_width() > potentialTableColumn.get(allColumn.get(j+1)).getLeftEdge())
 										bonusRate = 0.25;
 								}
-								
+
 								if(current.get_top() + current.get_height() < tableEdge[2])
 								{
 									if(tableEdge[2] - current.get_top() - current.get_height() <= aveRowHeight * 1.5 * bonusRate)
@@ -4561,7 +4564,7 @@ public class slidePage {
 										if(current.get_height() < potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 1.5
 												&& current.get_height() > potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 0.67)
 										{
-											//System.out.println("---up---" + current.get_text());
+											//LoggerSingleton.info("---up---" + current.get_text());
 											if(current.get_left() < tableEdge[0])
 												tableEdge[0] = current.get_left();
 											if(current.get_left() + current.get_width() > tableEdge[1])
@@ -4569,8 +4572,8 @@ public class slidePage {
 											if(current.get_top() < tableEdge[2])
 												tableEdge[2] = current.get_top();
 											stable = false;
-											//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
-										}										
+											//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+										}
 									}
 								}
 								else if(current.get_top() > tableEdge[3])
@@ -4580,7 +4583,7 @@ public class slidePage {
 										if(current.get_height() < potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 1.5
 											&& current.get_height() > potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 0.67)
 										{
-											//System.out.println("---Down---" + current.get_text());
+											//LoggerSingleton.info("---Down---" + current.get_text());
 											if(current.get_left() < tableEdge[0])
 												tableEdge[0] = current.get_left();
 											if(current.get_left() + current.get_width() > tableEdge[1])
@@ -4588,14 +4591,14 @@ public class slidePage {
 											if(current.get_bottom() > tableEdge[3])
 												tableEdge[3] = current.get_bottom();
 											stable = false;
-											//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+											//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 										}
 									}
 								}
 							}
 							else
 							{
-								//System.out.println("---column cover---" + current.get_text());
+								//LoggerSingleton.info("---column cover---" + current.get_text());
 								if(current.get_left() < tableEdge[0])
 									tableEdge[0] = current.get_left();
 								if(current.get_left() + current.get_width() > tableEdge[1])
@@ -4605,13 +4608,13 @@ public class slidePage {
 								if(current.get_bottom() > tableEdge[3])
 									tableEdge[3] = current.get_bottom();
 								stable = false;
-								//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+								//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 							}
 						}
 					}
 				}
 			}
-			
+
 			//here starts the "half-involved" check
 			stable = false;
 			while(!stable)
@@ -4620,7 +4623,7 @@ public class slidePage {
 				for(int j = 0; j < list.size(); j++)
 					if(!list.get(j).isInside(tableEdge) && !list.get(j).isAwayFrom(tableEdge))
 					{
-						//System.out.println("---area cover---" + list.get(j).get_text());
+						//LoggerSingleton.info("---area cover---" + list.get(j).get_text());
 						if(list.get(j).get_left() < tableEdge[0])
 							tableEdge[0] = list.get(j).get_left();
 						if(list.get(j).get_left() + list.get(j).get_width() > tableEdge[1])
@@ -4630,7 +4633,7 @@ public class slidePage {
 						if(list.get(j).get_bottom() > tableEdge[3])
 							tableEdge[3] = list.get(j).get_bottom();
 						stable = false;
-						//System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
+						//LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "] BigGap = " + biggestColumnGap + "; AveHeight = " + aveRowHeight);
 					}
 			}
 			/*
@@ -4642,14 +4645,14 @@ public class slidePage {
 				else
 				{
 					//if(list.get(j).get_text().contentEquals("Region"))
-						//System.out.println("$$$$ " + potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 1.5);
+						//LoggerSingleton.info("$$$$ " + potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 1.5);
 					if(list.get(j).get_left() > tableEdge[0] - this._pageWidth/200 && list.get(j).get_left() + list.get(j).get_width() < tableEdge[1] + this._pageWidth/200)
 						if(tableEdge[2] - list.get(j).get_bottom() <= Math.max((aveRowHeight - potentialTableColumn.get(allColumn.get(0)).getAveHeight())*1.5, potentialTableColumn.get(allColumn.get(0)).getAveHeight()*0.8) )
 						{
 							if(list.get(j).get_height() < potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 1.25
 								&& list.get(j).get_height() > potentialTableColumn.get(allColumn.get(0)).getAveHeight() * 0.9)
 							{
-								System.out.println("---potential header line---" + list.get(j).get_text());
+								LoggerSingleton.info("---potential header line---" + list.get(j).get_text());
 								if(list.get(j).get_left() < tableEdge[0])
 									tableEdge[0] = list.get(j).get_left();
 								if(list.get(j).get_left() + list.get(j).get_width() > tableEdge[1])
@@ -4658,27 +4661,27 @@ public class slidePage {
 									tableEdge[2] = list.get(j).get_top();
 								if(list.get(j).get_bottom() > tableEdge[3])
 									tableEdge[3] = list.get(j).get_bottom();
-								System.out.println("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
+								LoggerSingleton.info("[" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
 								break;
-							}		
+							}
 						}
 				}
 			}
 			*/
 			if(tableEdge[1] - tableEdge[0] > (tableEdge[3] - tableEdge[2]) * 10)
 			{
-				//System.out.println("Group " + (i+1) + " has extreme aspect ratio, removed.");
+				//LoggerSingleton.info("Group " + (i+1) + " has extreme aspect ratio, removed.");
 				continue;
 			}
 			/*else if((tableEdge[1] - tableEdge[0]) * (tableEdge[3] - tableEdge[2]) < 40000)
 			{
-				System.out.println("Group " + (i+1) + " is too small, removed.");
+				LoggerSingleton.info("Group " + (i+1) + " is too small, removed.");
 				continue;
 			}*/
 			else
 			{
 				//allTableArea.add(tableEdge);
-				
+
 				double aveMark = 0;
 				int aveHeight = 0;
 				int allInTable = 0;
@@ -4688,10 +4691,10 @@ public class slidePage {
 					textLine current = list.get(j);
 					algorithmInterface ai = new algorithmInterface();
 					double mark = 0;
-					
+
 					if(!current.isInside(tableEdge))
 						continue;
-					
+
 					if(ai.isStatNum(current.get_text()))
 					{
 						mark = 2.5;
@@ -4716,80 +4719,75 @@ public class slidePage {
 					allInTable++;
 					accumulatedArea += list.get(j).get_height() * list.get(j).get_width();
 				}
-				
+
 				aveMark = aveMark/(double)allInTable;
 				aveHeight = aveHeight/allInTable;
-				
-				int wholeArea = (tableEdge[1]-tableEdge[0])*(tableEdge[3]-tableEdge[2]);				
+
+				int wholeArea = (tableEdge[1]-tableEdge[0])*(tableEdge[3]-tableEdge[2]);
 				double rate = (double)accumulatedArea / (double)wholeArea;
 				double aspectRatio = (double)(tableEdge[1] - tableEdge[0]) / (double)(tableEdge[3] - tableEdge[2]);
 				/*
 				double finalEvaluation = rate * (double)aveHeight;
 				finalEvaluation += Math.pow(2, aveMark) / 4;
 				finalEvaluation += (double)supposedTableItemsGroup.get(i).size() / (double)(allColumn.size() * allRow.size());
-				finalEvaluation += (double)supposedTableItemsGroup.get(i).size() / 5;				
+				finalEvaluation += (double)supposedTableItemsGroup.get(i).size() / 5;
 				*/
 				double finalEvaluation = Math.pow(Math.E, aveMark) / 3;
 				finalEvaluation += Math.log(allInTable) * supposedTableItemsGroup.get(i).size() / (allColumn.size() * allRow.size());
 				finalEvaluation += Math.log(Math.pow(aveHeight, 2)) * Math.pow(Math.log(Math.log(Math.pow(wholeArea, 0.25))), 3) / Math.pow(Math.E, Math.pow(Math.abs(rate - 0.2), 1.0/3));
-				//System.out.println(finalEvaluation);
-				
-				File newFile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\TOG\\stats.txt");
-				try {
-					BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));										
-					output.append(lectureID + "-" + (this.get_PageNum() > 9 ? "" : "0") + this.get_PageNum() + '\t' + wholeArea + '\t' + rate + '\t' + allInTable + '\t'
-							+ supposedTableItemsGroup.get(i).size() + "\t" + allColumn.size() + "\t" + allRow.size() + "\t" +  aveMark + "\t" + aveHeight + "\t" + aspectRatio);
-					output.newLine();
-					output.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				
+				//LoggerSingleton.info(finalEvaluation);
+
+				BufferedWriter output = new BufferedWriter(new FileWriter(get_tog_stats_file(), true));
+				output.append(lectureID + "-" + (this.get_PageNum() > 9 ? "" : "0") + this.get_PageNum() + '\t' + wholeArea + '\t' + rate + '\t' + allInTable + '\t'
+						+ supposedTableItemsGroup.get(i).size() + "\t" + allColumn.size() + "\t" + allRow.size() + "\t" +  aveMark + "\t" + aveHeight + "\t" + aspectRatio);
+				output.newLine();
+				output.close();
+
 				if(finalEvaluation > 6.5)
 				{
 					allTableArea.add(tableEdge);
-					System.out.println("Table Detected: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
+					LoggerSingleton.info("Table Detected: [" + tableEdge[0] + ", " + tableEdge[1] + ", " + tableEdge[2] + ", " + tableEdge[3] + "]");
 				}
 				else
-					System.out.println("Group " + (i+1) + " fails the general check ( " + finalEvaluation + " ), removed." );
+					LoggerSingleton.info("Group " + (i+1) + " fails the general check ( " + finalEvaluation + " ), removed." );
 			}
-				
+
 		}
-		
-		
+
+
 		/*
 		for(int i = 0; i < potentialTableRow.size(); i++)
 		{
 			if(i == 0)
-				System.out.println("^^^^Table Row^^^^");
+				LoggerSingleton.info("^^^^Table Row^^^^");
 			for(int j = 0; j < potentialTableRow.get(i).size(); j++)
 			{
 				System.out.print(list.get(potentialTableRow.get(i).get(j)).get_text() +'\t' + "||" + '\t');
 			}
-			System.out.println();
+			LoggerSingleton.info();
 			if(i == potentialTableRow.size() - 1)
-				System.out.println("^^^^Table Row End^^^^");
+				LoggerSingleton.info("^^^^Table Row End^^^^");
 		}
-		
+
 		for(int i = 0; i < potentialTableColumn.size(); i++)
 		{
 			if(i == 0)
-				System.out.println("^^^^Table Column^^^^");
+				LoggerSingleton.info("^^^^Table Column^^^^");
 			System.out.print("Align-" + (potentialTableColumn.get(i).getAlign()[0] ? "left:" : (potentialTableColumn.get(i).getAlign()[1] ? "right:" : "center:")) + '\t');
 			for(int j = 0; j < potentialTableColumn.get(i).getColumnCandidates().size(); j++)
 			{
 				System.out.print(list.get(potentialTableColumn.get(i).getColumnCandidates().get(j)).get_text() +'\t' + "||" + '\t');
 			}
-			System.out.println();
+			LoggerSingleton.info();
 			if(i == potentialTableColumn.size() - 1)
-				System.out.println("^^^^Table Column End^^^^");
+				LoggerSingleton.info("^^^^Table Column End^^^^");
 		}
-		
+
 		/*
 		for(int i = 0; i < potentialTableRow.size(); i++)
 		{
 			if(i == 0)
-				System.out.println("^^^^Crossed Items^^^^");
+				LoggerSingleton.info("^^^^Crossed Items^^^^");
 			for(int j = 0; j < potentialTableRow.get(i).size(); j++)
 			{
 				for(int k = 0; k < crossedItemsInfo.size(); k++)
@@ -4799,18 +4797,18 @@ public class slidePage {
 						break;
 					}
 			}
-			System.out.println();
+			LoggerSingleton.info();
 			if(i == potentialTableRow.size() - 1)
-				System.out.println("^^^^Crossed Items End^^^^");
+				LoggerSingleton.info("^^^^Crossed Items End^^^^");
 		}
-		
-		
+
+
 		for(int x = 0; x < supposedTableItemsGroup.size(); x++)
 		{
 			if(x == 0)
-				System.out.println("^^^^Crossed Items^^^^");
-			
-			System.out.println("Group " + (x+1) + ":");
+				LoggerSingleton.info("^^^^Crossed Items^^^^");
+
+			LoggerSingleton.info("Group " + (x+1) + ":");
 			for(int i = 0; i < potentialTableRow.size(); i++)
 			{
 				for(int j = 0; j < potentialTableRow.get(i).size(); j++)
@@ -4822,71 +4820,79 @@ public class slidePage {
 							break;
 						}
 				}
-				System.out.println();
+				LoggerSingleton.info();
 			}
-			
+
 			if(x == supposedTableItemsGroup.size() - 1)
-				System.out.println("^^^^Crossed Items End^^^^");
+				LoggerSingleton.info("^^^^Crossed Items End^^^^");
 		}
 		*/
 		return allTableArea;
 	}
 
+	private File get_tog_stats_file(){
+		File f = new File(Constants.DEFAULT_TOG_STATS);
+		if(!f.canWrite())
+			f = new File("tog_stats.txt");
+		
+		return f;
+	}
+	
 	private boolean _onlyForStats_1(int a, int b)
 	{
 		//this function will only be used for gathering stats, to judge whether the two input slides are IN-FACT-BY-HUMAN-EYE the same.
-		
+
 		ArrayList<int[]> para = new ArrayList<int[]>();
 		para.clear();
-		
+
 		int x1[] = {2,8};
 		para.add(x1);
-		
+
 		int x2[] = {15,16,18,20,22,24};
 		para.add(x2);
-		
+
 		int x3[] = {17,19,21,23,25};
 		para.add(x3);
-		
+
 		int x4[] = {28,34};
 		para.add(x4);
-		
+
 		int x5[] = {29,31,33,35};
 		para.add(x5);
-		
+
 		int x6[] = {30,32,36};
 		para.add(x6);
-		
+
 		int x7[] = {37,38,40};
 		para.add(x7);
-		
+
 		int x8[] = {39,41,43,45};
 		para.add(x8);
-		
+
 		int x9[] = {58,60,62};
 		para.add(x9);
-		
+
 		int x91[] = {59,61,63};
 		para.add(x91);
-		
+
 		int x10[] = {47,48,49,50,52,54,56};
 		para.add(x10);
-		
+
 		int x11[] = {51,53,55,57,65};
 		para.add(x11);
-		
+
 		int x12[] = {74,76,77};
 		para.add(x12);
-		
+
 		int x13[] = {75,78};
 		para.add(x13);
-		
+
 		int x14[] = {81,83};
 		para.add(x14);
-		
+
 		int x14a[] = {84,85};
 		para.add(x14a);
-		
+
 		int x15[] = {42,44,88};
 		para.add(x15);
 		/**/
@@ -4901,10 +4907,10 @@ public class slidePage {
 					match = i;
 					order = j;
 				}
-					
+
 			}
 		}
-		
+
 		if(match >= 0)
 		{
 			int temp[] = para.get(match);
@@ -4912,10 +4918,10 @@ public class slidePage {
 				if(b == temp[j])
 					return true;
 		}
-		
+
 		return false;
 	}
-	
-	
-	
+
+
+
 }

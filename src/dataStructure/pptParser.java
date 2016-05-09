@@ -17,7 +17,7 @@ public class pptParser {
 	{
 		XMLSlideShow ppt = new XMLSlideShow(new FileInputStream(fileName));
 		XSLFSlide[] slides = ppt.getSlides();
-		//System.out.println(slides.length);
+		//LoggerSingleton.info(slides.length);
 		
 		ArrayList<slidePage> sps = new ArrayList<slidePage>();
 		
@@ -26,7 +26,7 @@ public class pptParser {
 			slidePage sp = new slidePage();
 			sp.set_PageNum(x+1);
 			
-			//System.out.println(slides[x].getTitle());
+			//LoggerSingleton.info(slides[x].getTitle());
 			if(slides[x].getTitle().length() > 0)
 			{
 				String text = slides[x].getTitle();
@@ -43,8 +43,8 @@ public class pptParser {
 			
 			for(int i = 0; i < slides[x].getPlaceholders().length; i++)
 			{
-				//System.out.println();
-				//System.out.println("Component " + (i+1) + ": " + slides[x].getPlaceholder(i).getShapeName());
+				//LoggerSingleton.info();
+				//LoggerSingleton.info("Component " + (i+1) + ": " + slides[x].getPlaceholder(i).getShapeName());
 				
 				if(slides[x].getPlaceholder(i).getText().contentEquals(slides[x].getTitle()))
 					continue;
@@ -66,7 +66,7 @@ public class pptParser {
 					int base = slides[x].getPlaceholder(i).getTextParagraphs().get(0).getLevel();
 					
 					//System.out.print(slides[x].getPlaceholder(i).getTextParagraphs().get(j).getLevel() + ": ");
-					//System.out.println(slides[x].getPlaceholder(i).getTextParagraphs().get(j).getText() + "  ########");
+					//LoggerSingleton.info(slides[x].getPlaceholder(i).getTextParagraphs().get(j).getText() + "  ########");
 					
 					String text = p.getText();
 					text = text.replace("\n", " ");
@@ -86,9 +86,9 @@ public class pptParser {
 				}
 			}
 			
-			//System.out.println();
-			//System.out.println("--------------------------");
-			//System.out.println();
+			//LoggerSingleton.info();
+			//LoggerSingleton.info("--------------------------");
+			//LoggerSingleton.info();
 			
 			sp.set_texts(tos);
 			sp.isSlideWellOrganized();
@@ -97,12 +97,12 @@ public class pptParser {
 				sps.add(sp);
 		}
 		/*
-		System.out.println();
+		LoggerSingleton.info();
 		for(int i = 0; i < sps.size(); i++)
 		{
 			slidePage sp = sps.get(i);
 			System.out.print(sp.get_PageNum() + "  ");
-			System.out.println(sp.get_title());
+			LoggerSingleton.info(sp.get_title());
 			
 			for(int j = 0; j < sp.get_texts().size(); j++)
 			{
@@ -113,11 +113,11 @@ public class pptParser {
 					System.out.print("----");
 				else if(to.get_hierarchy()==3)
 					System.out.print("------");
-				System.out.println(to.get_text());
+				LoggerSingleton.info(to.get_text());
 			}
 			
-			System.out.println("PageType: " + sp.get_pageType());
-			System.out.println();
+			LoggerSingleton.info("PageType: " + sp.get_pageType());
+			LoggerSingleton.info();
 		} 
 		*/
 		return sps;

@@ -2,6 +2,8 @@ package sharedMethods;
 
 import java.io.IOException;
 
+import helper.LoggerSingleton;
+
 public class algorithmInterface {
 	
 	public algorithmInterface () {}
@@ -102,7 +104,7 @@ public class algorithmInterface {
 		try {
 			ip.cropTableFromSlide(lectureID, slideID, tableRange);
 		} catch (IOException e) {
-			System.out.println("Table Cropping Error!" + lectureID + "-" + slideID);
+			LoggerSingleton.info("Table Cropping Error!" + lectureID + "-" + slideID);
 		}
 	}
 	
@@ -113,7 +115,7 @@ public class algorithmInterface {
 			ip.runTessract(lectureID, slideID);
 		} catch (IOException e) {
 			e.printStackTrace();
-			System.out.println("Run Tesseract Error on " + lectureID + "-" + slideID);
+			LoggerSingleton.info("Run Tesseract Error on " + lectureID + "-" + slideID);
 		}
 	}
 

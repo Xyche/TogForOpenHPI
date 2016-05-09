@@ -426,7 +426,7 @@ public class textLine {
 			
 			if(retain == true)
 				result = result + words[j] + " ";
-			//System.out.println(result);
+			//LoggerSingleton.info(result);
 		}
 		
 		//remove potential space at final position in the String

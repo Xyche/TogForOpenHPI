@@ -1,3 +1,4 @@
+package helper;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -6,17 +7,18 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+
 public class ArgumentParser {
 	
 	ArgumentParser() {
 		throw new RuntimeException("Do not create instances of this class");
 	}
 
-	static final String LECTURE_KEY = "id";
-	static final String FOLDER_KEY = "folder";
-	static final String LOGGER_KEY = "log";
-	static final String PDF_KEY = "pdf";
-	static final String PPTX_KEY = "pptx";
+	public static final String LECTURE_KEY = "id";
+	public static final String FOLDER_KEY = "folder";
+	public static final String LOGGER_KEY = "log";
+	public static final String PDF_KEY = "pdf";
+	public static final String PPTX_KEY = "pptx";
 
 	@SuppressWarnings("static-access")
 	public static Options defineCLI(){
@@ -73,7 +75,7 @@ public class ArgumentParser {
 	}
 	
 	public static void printHelp(Options opt){
-		new HelpFormatter().printHelp(new runTogForOpenHPI().getClass().getName(), opt);
+		new HelpFormatter().printHelp("runTogForOpenHPI", opt);
 	}
 
 	

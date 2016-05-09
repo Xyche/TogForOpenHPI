@@ -7,6 +7,8 @@ import java.io.*;
 
 import javax.imageio.ImageIO;
 
+import helper.LoggerSingleton;
+
 public class imageProblem {
 	
 	public imageProblem() {}
@@ -46,7 +48,7 @@ public class imageProblem {
 		File outputfile = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\input.jpg");
 		ImageIO.write(pic, "jpg", outputfile);
 		
-		//System.out.println("here");
+		//LoggerSingleton.info("here");
 		ProcessBuilder pb = new ProcessBuilder("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Tesseract-OCR-executable\\run.bat");
 		pb.directory(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Tesseract-OCR-executable\\"));
 		Process p = pb.start();
@@ -57,9 +59,9 @@ public class imageProblem {
 			e.printStackTrace();
 		}
 		if(isFinished != 0)
-			System.out.println("Tesseract Error!");
+			LoggerSingleton.info("Tesseract Error!");
 		p.destroy();
-		//System.out.println("there");
+		//LoggerSingleton.info("there");
 		
 		pic = ImageIO.read(new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\output.jpg"));
 		File dir = new File("C:\\_HPI-tasks\\20130101_TreeOutlineGeneration\\table\\Tesseract\\Result\\" + lectureID);
