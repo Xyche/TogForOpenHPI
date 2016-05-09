@@ -55,6 +55,30 @@
           </archive>
         </configuration>
       </plugin>
+
+      <plugin><!-- jar package -->
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>runTogForOpenHPI</mainClass>
+              <addClasspath>true</addClasspath>
+              <classpathPrefix>lib/</classpathPrefix>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+      </plugin>
       <plugin><!-- exec main class -->
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
@@ -68,14 +92,6 @@
           </executions>
           <configuration>
             <mainClass>runTogForOpenHPI</mainClass>
-            <arguments>
-              <argument>-id</argument>
-              <argument>test</argument>
-              <argument>-folder</argument>
-              <argument>D:\HIWI_DATA\slides\</argument>
-              <argument>-log</argument>
-              <argument>debug.log</argument>
-            </arguments>
           </configuration>
       </plugin>
     </plugins>
