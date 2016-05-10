@@ -35,7 +35,7 @@ public class runTogForOpenHPI {
 		boolean havePPTX = cmd.hasOption(ArgumentParser.PPTX_KEY);
 		if(havePDF == havePPTX){
 			havePDF = true;
-			havePDF = false;
+			havePPTX = false;
 		}
 		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY);
 		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Constants.DEFAULT_WORKING_DIR);
@@ -369,7 +369,7 @@ public class runTogForOpenHPI {
 		LoggerSingleton.info("-------------------------------------------------------");
 
 //		ArrayList<textOutline> segments = new ArrayList<textOutline>();
-//		segments = autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
+		/* segments = */autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
 
 	}
 
