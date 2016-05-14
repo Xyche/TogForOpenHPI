@@ -106,26 +106,35 @@ public class runTogForOpenHPI {
 					count2dot++;
 			}
 		}
-
-		if(100*(count1low+count2low)/(count1+count2) > 30)
+		
+		double 
+			topicCaseStartRatio = count1 == 0 && count2 == 0 ? 0 : 100 * (count1low + count2low) / (count1 + count2),
+			lev1TopicCaseStartRatio = count1 == 0 ? 0 : 100 * count1low / count1, 
+			lev2TopicCaseStartRatio = count2 == 0 ? 0 : 100 * count2low / count2,
+			topicWithDotRatio = count1 == 0 && count2 == 0 ? 0 : 100 * (count1dot + count2dot) / (count1 + count2),
+			lev1WithDotRatio = count1 == 0 ? 0 : 100 * count1dot / count1, 
+			lev2WithDotRatio = count2 == 0 ? 0 : 100 * count2dot / count2;
+		
+		if (topicCaseStartRatio > 30)
 			og.set_beginWithLowCaseLetter(true);
-		else if(100*(count1low+count2low)/(count1+count2) > 20 && 100*count2low/count2 >= 150*count1low/count1)
+		else if (topicCaseStartRatio > 20 && lev2TopicCaseStartRatio >= lev1TopicCaseStartRatio * 1.5)
 			og.set_beginWithLowCaseLetter(true);
 		else
 			og.set_beginWithLowCaseLetter(false);
-
-		if(100*(count1dot+count2dot)/(count1+count2) >= 10)
+		
+		if(topicWithDotRatio >= 10)
 			og.set_haveSignBeforeSubtopic(true);
 		else
 			og.set_haveSignBeforeSubtopic(false);
+			
 
-		LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
-		LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
-		LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
+		LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + topicCaseStartRatio + "% " + og.is_beginWithLowCaseLetter());
+		LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + lev1TopicCaseStartRatio + "%");
+		LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + lev2TopicCaseStartRatio + "%");
 
-		LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
-		LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
-		LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
+		LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + topicWithDotRatio + "% " + og.is_haveSignBeforeSubtopic());
+		LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + lev1WithDotRatio + "%");
+		LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + lev2WithDotRatio + "%");
 
 		// To do: a self-check system for adaptive round
 		boolean havingAdaptiveDifference = true;
@@ -210,27 +219,35 @@ public class runTogForOpenHPI {
 					}
 			}
 
-			if(100*(count1low+count2low)/(count1+count2) > 30)
+			topicCaseStartRatio = count1 == 0 && count2 == 0 ? 0 : 100 * (count1low + count2low) / (count1 + count2);
+			lev1TopicCaseStartRatio = count1 == 0 ? 0 : 100 * count1low / count1;
+			lev2TopicCaseStartRatio = count2 == 0 ? 0 : 100 * count2low / count2;
+			topicWithDotRatio = count1 == 0 && count2 == 0 ? 0 : 100 * (count1dot + count2dot) / (count1 + count2);
+			lev1WithDotRatio = count1 == 0 ? 0 : 100 * count1dot / count1;
+			lev2WithDotRatio = count2 == 0 ? 0 : 100 * count2dot / count2;
+		
+
+			if(topicCaseStartRatio > 30)
 				og.set_beginWithLowCaseLetter(true);
-			else if(100*(count1low+count2low)/(count1+count2) > 20 && 100*count2low/count2 >= 150*count1low/count1)
+			else if(topicCaseStartRatio > 20 && lev2TopicCaseStartRatio >= 1.5 * lev1TopicCaseStartRatio)
 				og.set_beginWithLowCaseLetter(true);
 			else
 				og.set_beginWithLowCaseLetter(false);
 
-			LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + 100*(count1low+count2low)/(count1+count2) + "% " + og.is_beginWithLowCaseLetter());
-			LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + 100*count1low/count1 + "%");
-			LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + 100*count2low/count2 + "%");
+			LoggerSingleton.info("Total Topic: " + (count1+count2) + " Low Case Start: " + (count1low+count2low) + " Ratio: " + topicCaseStartRatio + "% " + og.is_beginWithLowCaseLetter());
+			LoggerSingleton.info("Lev-1 Topic: " + count1 + " Low Case Start: " + count1low + " Ratio: " + lev1TopicCaseStartRatio + "%");
+			LoggerSingleton.info("Lev-2 Topic: " + count2 + " Low Case Start: " + count2low + " Ratio: " + lev2TopicCaseStartRatio + "%");
 
 			if(!lastRoundBeginningDot)
 			{
-				if(100*(count1dot+count2dot)/(count1+count2) >= 10)
+				if(topicWithDotRatio >= 10)
 					og.set_haveSignBeforeSubtopic(true);
 				else
 					og.set_haveSignBeforeSubtopic(false);
 
-				LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + 100*(count1dot+count2dot)/(count1+count2) + "% " + og.is_haveSignBeforeSubtopic());
-				LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + 100*count1dot/count1 + "%");
-				LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + 100*count2dot/count2 + "%");
+				LoggerSingleton.info("Total Topic: " + (count1+count2) + " With a dot: " + (count1dot+count2dot) + " Ratio: " + topicWithDotRatio + "% " + og.is_haveSignBeforeSubtopic());
+				LoggerSingleton.info("Lev-1 Topic: " + count1 + " With a dot: " + count1dot + " Ratio: " + lev1WithDotRatio + "%");
+				LoggerSingleton.info("Lev-2 Topic: " + count2 + " With a dot: " + count2dot + " Ratio: " + lev2WithDotRatio + "%");
 			}
 			else
 			{
@@ -735,7 +752,10 @@ public class runTogForOpenHPI {
 		if(haveSegment)
 			averageSegLength = totalTime / count;
 
-		totalTime = (int) (onlyTitles.get(onlyTitles.size()-1).get_time().getTime() - onlyTitles.get(0).get_time().getTime()) / 1000 + 30;
+		if(onlyTitles.isEmpty())
+			totalTime = 30;
+		else
+			totalTime = (int) (onlyTitles.get(onlyTitles.size()-1).get_time().getTime() - onlyTitles.get(0).get_time().getTime()) / 1000 + 30;
 
 
 		if(haveSegment)
@@ -803,7 +823,8 @@ public class runTogForOpenHPI {
 		}
 		else
 		{
-			averageSegLength = 180 > totalTime/5 ? 180 : totalTime/5;
+			// !!!! INF loop, if first duration is longer, than the averageSegLength
+			averageSegLength = Math.max(180, totalTime/5);
 			LoggerSingleton.info(averageSegLength);
 			int currentPos = 0;
 			int currentSum = 0;
@@ -819,7 +840,7 @@ public class runTogForOpenHPI {
 					currentSum += durationBySeconds.get(i);
 					if(currentSum > averageSegLength)
 					{
-						if(currentPos == 0 && durationBySeconds.get(i) >= 90)
+						if(currentPos != 0 && durationBySeconds.get(i) >= 90)
 						{
 							currentSum -= durationBySeconds.get(i);
 							onlyTitles.get(currentPos).set_childEnd(currentSum);

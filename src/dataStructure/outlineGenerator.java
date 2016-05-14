@@ -1283,7 +1283,7 @@ public class outlineGenerator {
 		LoggerSingleton.info();
 
 		if(!isTag)
-			sps = findIndexPage(sps, 1, sps.size()-1);
+			sps = findIndexPage(sps, 0, sps.size()-1);
 		else
 		{
 			for(int i = 0; i < sps.size(); i++)
@@ -2873,6 +2873,7 @@ public class outlineGenerator {
 		 * by the parameter "child" and "childEnd" of the textOutline. And unmatched text in
 		 * the index page will be removed.
 		 */
+		if(endPosition <= beginPosition) return sps;
 		LoggerSingleton.info("Searching Index Page in << " + sps.get(beginPosition).get_PageNum() + " " + sps.get(endPosition).get_PageNum() + " >>");
 		ArrayList<Integer> IndexPos = new ArrayList<Integer>();
 		for(int i = beginPosition; i <= endPosition; i++)
