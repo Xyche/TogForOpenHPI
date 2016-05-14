@@ -790,7 +790,7 @@ public class runTogForOpenHPI {
 							onlyTitles.get(currentPos).set_childEnd(currentSum);
 							lastPos = currentPos;
 							currentPos = i;
-							i--;
+							//i--;
 						}
 						else
 						{
@@ -824,7 +824,7 @@ public class runTogForOpenHPI {
 		else
 		{
 			// !!!! INF loop, if first duration is longer, than the averageSegLength
-			averageSegLength = Math.max(180, totalTime/5);
+			averageSegLength = Math.max(180, onlyTitles.isEmpty() ? 0 : totalTime / onlyTitles.size() );
 			LoggerSingleton.info(averageSegLength);
 			int currentPos = 0;
 			int currentSum = 0;
@@ -840,12 +840,12 @@ public class runTogForOpenHPI {
 					currentSum += durationBySeconds.get(i);
 					if(currentSum > averageSegLength)
 					{
-						if(currentPos != 0 && durationBySeconds.get(i) >= 90)
+						if(currentPos == 0 && durationBySeconds.get(i) >= 90)
 						{
 							currentSum -= durationBySeconds.get(i);
 							onlyTitles.get(currentPos).set_childEnd(currentSum);
 							currentPos = i;
-							i--;
+							//i--;
 						}
 						else
 						{
