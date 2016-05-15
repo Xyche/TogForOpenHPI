@@ -9,6 +9,8 @@ import javax.xml.parsers.*;
 import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
+import com.google.common.base.Joiner;
+
 import sharedMethods.algorithmInterface;
 import dataStructure.*;
 import helper.ArgumentParser;
@@ -48,14 +50,16 @@ public class runTogForOpenHPI {
 		LoggerSingleton.info("< STEP 1: Loading from Database >");
 		for(int i = 0; i < tll.size(); i++) {
 			textLine t = tll.get(i);
-			LoggerSingleton.info(t.get_slideID() + "  ");
-			LoggerSingleton.info(t.get_type() + "  ");
-			LoggerSingleton.info(t.get_text() + "  ");
-			LoggerSingleton.info(t.get_top() + "  ");
-			LoggerSingleton.info(t.get_left() + "  ");
-			LoggerSingleton.info(t.get_width() + "  ");
-			LoggerSingleton.info(t.get_height() + "  ");
-			LoggerSingleton.info(t.get_time());
+			LoggerSingleton.info(Joiner.on(" ").join(new String[] {
+		      String.valueOf(t.get_slideID()),
+		      String.valueOf(t.get_type()),
+		      String.valueOf(t.get_text()),
+		      String.valueOf(t.get_top()),
+		      String.valueOf(t.get_left()),
+		      String.valueOf(t.get_width()),
+		      String.valueOf(t.get_height()),
+		      String.valueOf(t.get_time())
+			}));
 		}
 		//LoggerSingleton.info("$$$$\tOCR text-lines:\t" + tll.size());
 
@@ -760,7 +764,9 @@ public class runTogForOpenHPI {
 
 		if(haveSegment)
 		{
-			averageSegLength = averageSegLength > totalTime/5 ? averageSegLength : totalTime/5;
+			averageSegLength = Math.max(averageSegLength, onlyTitles.isEmpty() ? 0 : totalTime / onlyTitles.size() );
+			
+			//averageSegLength = averageSegLength > totalTime/5 ? averageSegLength : totalTime/5;
 			LoggerSingleton.info(averageSegLength);
 			int lastPos = -1;
 			int currentPos = 0;
