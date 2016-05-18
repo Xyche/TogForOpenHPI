@@ -571,14 +571,14 @@ public class outlineGenerator {
 		LoggerSingleton.info();
 
 		if(!isTag)
-			sps = findIndexPage(sps, 1, sps.size()-1);
+			sps = findIndexPage(sps, 0, sps.size()-1);
 		else
 		{
 			for(int i = 0; i < sps.size(); i++)
 			{
 				if(sps.get(i).get_pageType() == 2)
 				{
-					sps = findIndexPage(sps, 1, i-1);
+					sps = findIndexPage(sps, 0, i-1);
 					for(int j = 0; j < sps.get(i).get_texts().size(); j++)
 					{
 						textOutline currentTo = sps.get(i).get_texts().get(j);
@@ -1290,7 +1290,7 @@ public class outlineGenerator {
 			{
 				if(sps.get(i).get_pageType() == 2)
 				{
-					sps = findIndexPage(sps, 1, i-1);
+					sps = findIndexPage(sps, 0, i-1);
 					for(int j = 0; j < sps.get(i).get_texts().size(); j++)
 					{
 						textOutline currentTo = sps.get(i).get_texts().get(j);
@@ -1987,14 +1987,14 @@ public class outlineGenerator {
 		LoggerSingleton.info();
 
 		if(!isTag)
-			sps = findIndexPage(sps, 1, sps.size()-1);
+			sps = findIndexPage(sps, 0, sps.size()-1);
 		else
 		{
 			for(int i = 0; i < sps.size(); i++)
 			{
 				if(sps.get(i).get_pageType() == 2)
 				{
-					sps = findIndexPage(sps, 1, i-1);
+					sps = findIndexPage(sps, 0, i-1);
 					for(int j = 0; j < sps.get(i).get_texts().size(); j++)
 					{
 						textOutline currentTo = sps.get(i).get_texts().get(j);
@@ -5153,11 +5153,13 @@ public class outlineGenerator {
 				}
 
 				if(j == sps.size() - 1 && i == sps_f.size()-1 && syncPosInVideo < 0)
-					syncPosInVideo = j;
+					syncPosInVideo = j + 1;
 			}
 
 			if(syncPosInVideo >= 0)
 			{
+				//When searching at the "unmatched" end, suppose matching at position "end+1"
+			    if(syncPosInVideo >= sps.size()) i++;
 
 				//First synchronize the pages between two "perfectly matched" pages
 				if(i - lastSyncPosInFile > 1)
@@ -5267,6 +5269,10 @@ public class outlineGenerator {
 						}
 					}
 				}
+				
+				//For the "unmatched" end, no "perfectly matched" page available, skip.
+			    if(syncPosInVideo >= sps.size()) break;
+
 
 				//Then synchronize the "perfectly matched" page.
 				sps_f.get(i).set_startTime(sps.get(syncPosInVideo).get_startTime());
