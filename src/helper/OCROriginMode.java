@@ -8,7 +8,9 @@ public enum OCROriginMode {
 	 * Mode 3: Load from additional PDF
 	 * file
 	 */
-	mySQL, teleTaskXML, ACM_XML, PDF;
+	mySQL, teleTaskXML, ACM_XML, PDF, JSON;
+	
+	public static final OCROriginMode DEFAULT_MODE = JSON;
 
 	static String description(OCROriginMode mode) {
 		String desc = "%d";
@@ -23,10 +25,13 @@ public enum OCROriginMode {
 			desc =  "%d - Load from additional PDF file";
 			break;
 		case teleTaskXML:
-			desc =  "%d - Load from xml files of teleTASK (default)";
+			desc =  "%d - Load from xml files of teleTASK";
+			break;
+		case JSON:
+			desc = "%d - Load from JSON file";
 			break;
 		}
-		return String.format(desc, mode.ordinal());
+		return String.format(desc, mode.ordinal()) + (DEFAULT_MODE == mode ? " (default)" : "");
 	}
 
 	public static OCROriginMode parseFromOption(String optionValue) {

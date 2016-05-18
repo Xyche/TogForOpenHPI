@@ -3,6 +3,10 @@ import java.sql.*;
 import java.util.*;
 
 import org.apache.commons.cli.*;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import javax.xml.parsers.*;
 
@@ -15,6 +19,7 @@ import sharedMethods.algorithmInterface;
 import dataStructure.*;
 import helper.ArgumentParser;
 import helper.Constants;
+import helper.JSONThumbnailsParser;
 import helper.LoggerSingleton;
 import helper.OCROriginMode;
 
@@ -22,13 +27,13 @@ public class runTogForOpenHPI {
 
 	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
 
-	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException {
+	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException, InstantiationException, IllegalAccessException, ClassNotFoundException, ParseException {
 		Options opt = ArgumentParser.defineCLI();
 		CommandLine cmd = ArgumentParser.parseCLI(opt, args);
 		if(cmd == null) return;
 
 		final boolean changeBBImageNames = cmd.hasOption(ArgumentParser.CHANGE_NAMES_KEY);
-		String modeString = cmd.getOptionValue(ArgumentParser.MODE_KEY, String.valueOf(OCROriginMode.teleTaskXML.ordinal()));
+		String modeString = cmd.getOptionValue(ArgumentParser.MODE_KEY, String.valueOf(OCROriginMode.DEFAULT_MODE.ordinal()));
 		final OCROriginMode OCR_Origin = OCROriginMode.parseFromOption(modeString);
 		
 		final int pageWidth = ArgumentParser.width(cmd), pageHeight = ArgumentParser.height(cmd);
@@ -682,6 +687,41 @@ public class runTogForOpenHPI {
 
 	}
 
+	static ArrayList<textLine> loadFromJSON(String workingFolder, String lecture_id) throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
+		
+		ArrayList<textLine> tll = JSONThumbnailsParser.parse(Constants.joinPath(workingFolder, lecture_id,  "thumbnails.json"));
+		
+		Comparator<textLine> tlc = new Comparator<textLine>() {
+			public int compare(textLine t1, textLine t2)
+			{
+				if(t1.get_slideID() >= t2.get_slideID())
+					return 1;
+				return -1;
+			}
+		};
+		
+		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
+		Collections.sort(tll, tlc);
+		
+		int currentSlideNumNew = 0;
+		int currentSlideNumOriginal = 0;
+		for(textLine tl: tll){
+			if(tl.get_slideID() > currentSlideNumOriginal){
+				currentSlideNumOriginal = tl.get_slideID();
+				currentSlideNumNew++;
+				tl.set_slideID(currentSlideNumNew);
+			} else if(tl.get_slideID() == currentSlideNumOriginal) {
+				tl.set_slideID(currentSlideNumNew);
+			} else {
+				LoggerSingleton.error(String.format("Error with textLine %d", 
+						tl.get_slideID()));
+				tll.remove(tl);
+			}			
+		}
+		
+		return tll;
+	}
+
 	public static ArrayList<textLine> loadOcrResults(
 			OCROriginMode OCR_Origin, 
 			String workingFolder, 
@@ -689,17 +729,22 @@ public class runTogForOpenHPI {
 			int localTimeZoneOffset, boolean changeBBImageNames) 
 					throws SQLException, ParserConfigurationException, 
 						SAXException, IOException, InstantiationException, 
-						IllegalAccessException, ClassNotFoundException
+						IllegalAccessException, ClassNotFoundException, ParseException
 	{
-		if(OCR_Origin == OCROriginMode.mySQL)
+		switch(OCR_Origin){
+		case mySQL:
 			return loadFromMySQL(lecture_id);
-		else if(OCR_Origin == OCROriginMode.teleTaskXML)
+		case teleTaskXML:
 			return loadFromTeleTaskXML(workingFolder, lecture_id, changeBBImageNames);
-		else if(OCR_Origin == OCROriginMode.ACM_XML)
+		case ACM_XML:
 			return loadFromACMXML(lecture_id);
-		else if(OCR_Origin == OCROriginMode.PDF)
+		case PDF:
 			return new pdfParser().analyzePDF(Constants.joinPath(workingFolder, lecture_id, Constants.DEFAULT_SLIDES_PDF));
-
+		case JSON:
+			return loadFromJSON(workingFolder, lecture_id);
+			
+		}
+		
 		return new ArrayList<>();
 	}
 
@@ -851,7 +896,7 @@ public class runTogForOpenHPI {
 							currentSum -= durationBySeconds.get(i);
 							onlyTitles.get(currentPos).set_childEnd(currentSum);
 							currentPos = i;
-							//i--;
+//							i--;
 						}
 						else
 						{

@@ -1,5 +1,8 @@
 package sharedMethods;
 
+import java.sql.Time;
+import java.util.TimeZone;
+
 public class TimeProblem {
 	
 	public TimeProblem() {}
@@ -34,6 +37,21 @@ public class TimeProblem {
 		seconds += Integer.parseInt(parts[2]);
 		
 		return seconds;
+	}
+
+	public Time parseJsonTimeTag(String tag) {
+
+		Time time = new Time(0);
+		
+		long hours = Long.parseLong(tag.split(":")[0].trim());		 
+        long minutes = Long.parseLong(tag.split(":")[1].trim()); 
+        long seconds = Long.parseLong(tag.split(":")[2].trim());
+        
+        long localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
+        long timeByMillisecond = (hours * 3600 + minutes * 60 + seconds) * 1000 - localTimeZoneOffset;
+        time.setTime(timeByMillisecond);
+		//System.out.println(tag + ": " + hours + '\t' + minutes + '\t' + seconds + '\t' + millies);
+		return time;
 	}
 
 }
