@@ -12,200 +12,196 @@ import java.sql.*;
 public class slidePage {
 
 	public slidePage(){}
-
-	public slidePage(int pageNum, int pageType, String title, int hierarchy, ArrayList<textOutline> list, int pageWidth, int pageHeight) {
-		//This constructor will be used for a prepared page
-		this.set_PageNum(pageNum);
-		this.set_pageType(pageType);
-		this.set_title(title);
-		this.set_texts(list);
-		this.set_hierarchy(hierarchy);
-		this.set_pageWidth(pageWidth);
-		this.set_pageHeight(pageHeight);
+	
+	public slidePage(ArrayList<textLine> list, outlineGenerator og) throws IOException{
+		if(og.is_isInitial())
+			init(list, og.get_pageWidth(), og.get_pageHeight());
+		else
+			init(list, og.get_pageWidth(), og.get_pageHeight(), og.get_potentialTitleArea(), og.get_potentialHierarchicalGap(),
+					og.is_beginWithLowCaseLetter(), og.is_haveSignBeforeSubtopic(), og.get_lectureID());
 	}
-
-
-	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) throws IOException {
+	
+	public void init(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) throws IOException {
 		//This constructor will be used for a raw page: common use
 
-		this.set_pageWidth(pageWidth);
-		this.set_pageHeight(pageHeight);
-		double wp = (double)pageWidth / 1024;
-		double hp = (double)pageHeight / 768;
-		this._titleLocation[0] = pageWidth;
-		this._titleLocation[2] = pageHeight;
+				this.set_pageWidth(pageWidth);
+				this.set_pageHeight(pageHeight);
+				double wp = (double)pageWidth / 1024;
+				double hp = (double)pageHeight / 768;
+				this._titleLocation[0] = pageWidth;
+				this._titleLocation[2] = pageHeight;
 
-		if(list.size() == 0)
-		{
-			LoggerSingleton.info("Empty List, cannot do the slidePage initialization...");
-			return ;
-		}
-
-		// Sort split textlines in same row
-
-		for(int i = 0; i < list.size(); i++)
-		{
-			if(i == list.size() - 1)
-				break;
-
-			int j;
-			for(j = i + 1; j < list.size(); j++)
-			{
-				if(list.get(i).isInSameRow(list.get(j)))
-					continue;
-				else
-					break;
-			}
-
-			for(int x = i; x < j; x++)
-				for(int y = x + 1; y < j; y++)
+				if(list.size() == 0)
 				{
-					if(list.get(y).get_left() < list.get(x).get_left())
-					{
-						textLine temp = list.get(x);
-						list.set(x, list.get(y));
-						list.set(y, temp);
-					}
+					LoggerSingleton.info("Empty List, cannot do the slidePage initialization...");
+					return ;
 				}
-		}
 
-		//In adaptive round, deleting potential extra signs before subtopics in the beginning
+				// Sort split textlines in same row
 
-		if(extraSignStart)
-		{
-			for(int i = 0; i < list.size(); i++)
-			{
-				if(list.get(i).get_type() <= -2)
-					continue;
-				else
-				{
-					if(list.get(i).get_text().length() <= 3)
-						continue;
-					else
-					{
-						if(list.get(i).get_text().charAt(0) != ' ' && list.get(i).get_text().charAt(1) == ' ' && list.get(i).get_text().charAt(2) != ' ')
-						{
-							if(list.get(i).get_text().charAt(0) == 'a' || list.get(i).get_text().charAt(0) == 'A')
-								if(!lowCaseStart && list.get(i).get_text().charAt(2) >= 'a' && list.get(i).get_text().charAt(2) <= 'z')
-									continue;
-
-							textLine t = list.get(i);
-							String temp = t.get_text().substring(2);
-							int diff = 2 * t.get_width() / t.get_text().length();
-							t.set_text(temp);
-							t.set_left(t.get_left() + diff);
-							t.set_lastLineLeft(t.get_left());
-							t.set_width(t.get_width() - diff);
-							t.set_count(-1);
-							list.set(i, t);
-						}
-					}
-				}
-			}
-			/*
-			if(list.get(0).get_slideID() == 12)
-			{
 				for(int i = 0; i < list.size(); i++)
 				{
-					LoggerSingleton.info(list.get(i).get_left() + "  " + list.get(i).get_width() + "  " + list.get(i).get_top() + "  " + list.get(i).get_text());
+					if(i == list.size() - 1)
+						break;
+
+					int j;
+					for(j = i + 1; j < list.size(); j++)
+					{
+						if(list.get(i).isInSameRow(list.get(j)))
+							continue;
+						else
+							break;
+					}
+
+					for(int x = i; x < j; x++)
+						for(int y = x + 1; y < j; y++)
+						{
+							if(list.get(y).get_left() < list.get(x).get_left())
+							{
+								textLine temp = list.get(x);
+								list.set(x, list.get(y));
+								list.set(y, temp);
+							}
+						}
 				}
-			}*/
-		}
 
-		/*First, 'sign' useless texts: those cannot be recognized or with several lines binded(too high),
-		* and repair those partly useless texts. And all these signed textLines will be deleted:
-		* before create textOutlines and after seek a title.
-		*
-		* All the texts will be first recursively repaired until there's nothing to change
-		* and then the auto-combined text lines will also be ruled out
-		* Finally deleted all those #NoUseString# after set the page number*/
-		double textHeightAverage = 0;
-		for(int i = 0; i < list.size(); i++)
-		{
-			textHeightAverage += (double)list.get(i).get_height();
+				//In adaptive round, deleting potential extra signs before subtopics in the beginning
 
-			String lastVersion = "";
-			while(!lastVersion.contentEquals(list.get(i).get_text()))
-			{
-				lastVersion = list.get(i).get_text();
-				list.get(i).repair();
-			}
-		}
+				if(extraSignStart)
+				{
+					for(int i = 0; i < list.size(); i++)
+					{
+						if(list.get(i).get_type() <= -2)
+							continue;
+						else
+						{
+							if(list.get(i).get_text().length() <= 3)
+								continue;
+							else
+							{
+								if(list.get(i).get_text().charAt(0) != ' ' && list.get(i).get_text().charAt(1) == ' ' && list.get(i).get_text().charAt(2) != ' ')
+								{
+									if(list.get(i).get_text().charAt(0) == 'a' || list.get(i).get_text().charAt(0) == 'A')
+										if(!lowCaseStart && list.get(i).get_text().charAt(2) >= 'a' && list.get(i).get_text().charAt(2) <= 'z')
+											continue;
 
-		textHeightAverage /= list.size();
+									textLine t = list.get(i);
+									String temp = t.get_text().substring(2);
+									int diff = 2 * t.get_width() / t.get_text().length();
+									t.set_text(temp);
+									t.set_left(t.get_left() + diff);
+									t.set_lastLineLeft(t.get_left());
+									t.set_width(t.get_width() - diff);
+									t.set_count(-1);
+									list.set(i, t);
+								}
+							}
+						}
+					}
+					/*
+					if(list.get(0).get_slideID() == 12)
+					{
+						for(int i = 0; i < list.size(); i++)
+						{
+							LoggerSingleton.info(list.get(i).get_left() + "  " + list.get(i).get_width() + "  " + list.get(i).get_top() + "  " + list.get(i).get_text());
+						}
+					}*/
+				}
 
-		//Second, set page number: all texts should be with one single same number
-		set_PageNum(list.get(0).get_slideID());
-		set_startTime(list.get(0).get_time());
+				/*First, 'sign' useless texts: those cannot be recognized or with several lines binded(too high),
+				* and repair those partly useless texts. And all these signed textLines will be deleted:
+				* before create textOutlines and after seek a title.
+				*
+				* All the texts will be first recursively repaired until there's nothing to change
+				* and then the auto-combined text lines will also be ruled out
+				* Finally deleted all those #NoUseString# after set the page number*/
+				double textHeightAverage = 0;
+				for(int i = 0; i < list.size(); i++)
+				{
+					textHeightAverage += (double)list.get(i).get_height();
 
-		//Here make a sign to those 'too large' or 'too small' text, but temporarily retain them
-		for(int i = 0; i < list.size(); i++)
-		{
-			if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) ||
-				( list.get(i).get_height() >= textHeightAverage * 4 && list.get(i).get_height() >= 35*hp ) )
-			{
-				//list.get(i).set_text("#NoUseString#");
-				list.get(i).set_type(-2);
-			}
-			else if(list.get(i).get_height() <= 6 * hp)
-				list.get(i).set_type(-2);
-			else if(list.get(i).get_height() <= 8 * hp)
-				list.get(i).set_type(-3);
-		}
+					String lastVersion = "";
+					while(!lastVersion.contentEquals(list.get(i).get_text()))
+					{
+						lastVersion = list.get(i).get_text();
+						list.get(i).repair();
+					}
+				}
 
+				textHeightAverage /= list.size();
 
+				//Second, set page number: all texts should be with one single same number
+				set_PageNum(list.get(0).get_slideID());
+				set_startTime(list.get(0).get_time());
 
-		//Next, find the title from texts and delete the textlines for title
-		ArrayList<Integer> textForTitle = seekTitleWithPTA(list, potentialTitleArea);
-		for(int i = textForTitle.size()-1; i >= 0 ; i--)
-		{
-			int j = textForTitle.get(i);
-			list.remove(j);
-		}
-
-		//Now, DELETE those #NoUseString# based on content
-		for(int i = list.size() - 1; i >= 0; i--)
-		{
-			if(list.get(i).get_type() == -1)
-				list.remove(i);
-		}
-
-		//Detect table
-		ArrayList<int[]> allTableArea = detectTable(list, wp, hp, lectureID);
-
-		if(allTableArea.size() >= 1)
-		{
-			for(int i = 0; i < allTableArea.size(); i++)
-			{
-				//ai.cropTable(lectureID, this.get_PageNum(), allTableArea.get(i));
-				for(int j = list.size()-1; j >= 0; j--)
-					if(list.get(j).isInside(allTableArea.get(i)))
-						list.remove(j);
-			}
-		}
-
-		/*
-		//run Tesseract table detection program
-		algorithmInterface ai = new algorithmInterface();
-		ai.runTesseract(lectureID, this.get_PageNum());
-		*/
-		//now, DELETE those #NoUseString# based on size, remain those with height 9 or 10 for middleline detection
-		for(int i = list.size() - 1; i >= 0; i--)
-		{
-			if(list.get(i).get_type() == -2)
-				list.remove(i);
-		}
-
-		//Next, load those text left
-		loadTextInHierarchyAdaptively(list, Gaps, lowCaseStart, extraSignStart);
+				//Here make a sign to those 'too large' or 'too small' text, but temporarily retain them
+				for(int i = 0; i < list.size(); i++)
+				{
+					if( (list.get(i).get_height() >= textHeightAverage * 2 && list.get(i).get_height() >= 60*hp ) ||
+						( list.get(i).get_height() >= textHeightAverage * 4 && list.get(i).get_height() >= 35*hp ) )
+					{
+						//list.get(i).set_text("#NoUseString#");
+						list.get(i).set_type(-2);
+					}
+					else if(list.get(i).get_height() <= 6 * hp)
+						list.get(i).set_type(-2);
+					else if(list.get(i).get_height() <= 8 * hp)
+						list.get(i).set_type(-3);
+				}
 
 
-		//Finally, judge whether most of the texts inside the slide included in the 3-level system.
-		isSlideWellOrganized();
+
+				//Next, find the title from texts and delete the textlines for title
+				ArrayList<Integer> textForTitle = seekTitleWithPTA(list, potentialTitleArea);
+				for(int i = textForTitle.size()-1; i >= 0 ; i--)
+				{
+					int j = textForTitle.get(i);
+					list.remove(j);
+				}
+
+				//Now, DELETE those #NoUseString# based on content
+				for(int i = list.size() - 1; i >= 0; i--)
+				{
+					if(list.get(i).get_type() == -1)
+						list.remove(i);
+				}
+
+				//Detect table
+				ArrayList<int[]> allTableArea = detectTable(list, wp, hp, lectureID);
+
+				if(allTableArea.size() >= 1)
+				{
+					for(int i = 0; i < allTableArea.size(); i++)
+					{
+						//ai.cropTable(lectureID, this.get_PageNum(), allTableArea.get(i));
+						for(int j = list.size()-1; j >= 0; j--)
+							if(list.get(j).isInside(allTableArea.get(i)))
+								list.remove(j);
+					}
+				}
+
+				/*
+				//run Tesseract table detection program
+				algorithmInterface ai = new algorithmInterface();
+				ai.runTesseract(lectureID, this.get_PageNum());
+				*/
+				//now, DELETE those #NoUseString# based on size, remain those with height 9 or 10 for middleline detection
+				for(int i = list.size() - 1; i >= 0; i--)
+				{
+					if(list.get(i).get_type() == -2)
+						list.remove(i);
+				}
+
+				//Next, load those text left
+				loadTextInHierarchyAdaptively(list, Gaps, lowCaseStart, extraSignStart);
+
+
+				//Finally, judge whether most of the texts inside the slide included in the 3-level system.
+				isSlideWellOrganized();
 	}
+	
+	private void init(ArrayList<textLine> list, int pageWidth, int pageHeight){
 
-
-	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight) {
 		//This constructor will be used for a raw page: common use
 
 		this.set_pageWidth(pageWidth);
@@ -282,6 +278,27 @@ public class slidePage {
 
 		//Finally, judge whether most of the texts inside the slide included in the 3-level system.
 		isSlideWellOrganized();
+	}
+	
+	public slidePage(int pageNum, int pageType, String title, int hierarchy, ArrayList<textOutline> list, int pageWidth, int pageHeight) {
+		//This constructor will be used for a prepared page
+		this.set_PageNum(pageNum);
+		this.set_pageType(pageType);
+		this.set_title(title);
+		this.set_texts(list);
+		this.set_hierarchy(hierarchy);
+		this.set_pageWidth(pageWidth);
+		this.set_pageHeight(pageHeight);
+	}
+
+
+	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) throws IOException {
+		init(list, pageWidth, pageHeight, potentialTitleArea, Gaps, lowCaseStart, extraSignStart, lectureID);
+	}
+
+
+	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight) {
+		init(list, pageWidth, pageHeight);
 	}
 
 	/* 'pageNum' is the unique symbol of a slide, maybe not continuous, but absolutely no repeat
