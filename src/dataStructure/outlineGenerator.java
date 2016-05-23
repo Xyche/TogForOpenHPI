@@ -3,16 +3,24 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.TimeZone;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.json.simple.parser.ParseException;
+import org.xml.sax.SAXException;
 
 import com.google.common.base.Joiner;
 
 import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
+import helper.OCRLoader;
+import helper.OCROriginMode;
 import sharedMethods.algorithmInterface;
 
 public class outlineGenerator {
@@ -35,11 +43,17 @@ public class outlineGenerator {
 
 	// 4 parameters in _potentialTitleArea : top, height, align(0:left, 1:middle), axis(left or middle)
 	private ArrayList<int[]> _potentialTitleArea = new ArrayList<int[]>();
+	private ArrayList<int[]> lastRoundTableAreas = new ArrayList<int[]>();
+
 
 	private ArrayList<Integer> _potentialHierarchicalGap = new ArrayList<Integer>();
+	private ArrayList<Integer> lastRoundGaps = new ArrayList<Integer>();
 
 	private boolean _beginWithLowCaseLetter = false;
 	private boolean _haveSignBeforeSubtopic = false;
+	
+	private boolean lastRoundLowCaseStart = false;
+	private boolean lastRoundBeginningDot = false;
 
  	public boolean is_isInitial() {
 		return _isInitial;
@@ -5353,10 +5367,6 @@ public class outlineGenerator {
 	}
 
 	public void set_topicParams(counts c) {
-		this.set_topicParams(c, false);
-	}
-
-	public void set_topicParams(counts c, boolean lastRoundBeginningDot) {
 		
 		if (c.topicCaseStartRatio() > 30)
 			this.set_beginWithLowCaseLetter(true);
@@ -5388,4 +5398,78 @@ public class outlineGenerator {
 		
 		
 	}
+
+	public boolean chechAdaptiveDifference() {
+
+		if (is_beginWithLowCaseLetter() != lastRoundLowCaseStart) {
+			LoggerSingleton.info("LowCaseStart status changed!!!");
+			return true;
+		}
+
+		if (is_haveSignBeforeSubtopic() != lastRoundBeginningDot) {
+			LoggerSingleton.info("BeginningDot status changed!!!");
+			return true;
+		}
+		
+
+		if (get_potentialTitleArea().size() != lastRoundTableAreas.size()) {
+			LoggerSingleton.info("Potential Title Area changed!!!");
+			return true;
+		} else {
+			for (int[] ref: get_potentialTitleArea()) {
+				boolean match = false;
+				for (int[] current: lastRoundTableAreas) 
+					// assign and check in one step
+					if(match = Math.abs(current[0] - ref[0]) <= get_pageWidth() / 256 && 
+							Math.abs(current[1] - ref[1]) <= get_pageHeight() / 256 && 
+							Math.abs(current[3] - ref[3]) <= get_pageHeight() / 256 && 
+							current[2] == ref[2]) break;
+				if (!match) {
+					LoggerSingleton.info("Potential Title Area changed!!!");
+					return true;
+				}
+
+			}
+		}
+
+		if (get_potentialHierarchicalGap().size() != lastRoundGaps.size()) {
+			LoggerSingleton.info("Hierarchical Gaps changed!!!");
+			return true;
+		} else {
+			for (int ref: get_potentialHierarchicalGap()) {
+				boolean match = false;
+				for (int current: lastRoundGaps)
+					// assign and check in one step
+					if (match = Math.abs(current - ref) <= get_pageWidth() / 256) break;
+				if (!match) {
+					LoggerSingleton.info("Hierarchical Gaps changed!!!");
+					return true;
+				}
+			}
+		}
+		
+		return false;
+
+	}
+
+	public void copyStateForAdaptiveRound() {
+		lastRoundLowCaseStart = is_beginWithLowCaseLetter();
+		lastRoundBeginningDot = is_haveSignBeforeSubtopic();
+
+		lastRoundTableAreas = new ArrayList<int[]>(get_potentialTitleArea());
+		lastRoundGaps = new ArrayList<Integer>(get_potentialHierarchicalGap());
+	}
+
+	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF,
+			boolean changeBBImageNames) throws IOException, InstantiationException, IllegalAccessException,
+					ClassNotFoundException, SQLException, ParserConfigurationException, SAXException, ParseException {
+
+		if (havePPTX)
+			return generateOutlineWithPPTX(tll, Constants.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX));
+		else if (havePDF)
+			return generateOutlineWithPDF(tll, OCRLoader.loadOcrResults(OCROriginMode.PDF, get_workingDir(), get_lectureID(), TimeZone.getDefault().getRawOffset(), changeBBImageNames));
+		else
+			return generateOutline(tll);
+	}
+
 }
