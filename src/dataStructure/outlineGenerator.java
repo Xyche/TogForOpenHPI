@@ -10,6 +10,7 @@ import java.util.TimeZone;
 
 import com.google.common.base.Joiner;
 
+import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
 import sharedMethods.algorithmInterface;
@@ -4870,6 +4871,7 @@ public class outlineGenerator {
 		return results;
 	}
 
+	@SuppressWarnings("unused")
 	private ArrayList<slidePage> synchronizeVideoAndFile(ArrayList<slidePage> sps, ArrayList<slidePage> sps_f)
 	{
 		LoggerSingleton.info("Sychronization: video-" + sps.size() + ", file-" + sps_f.size());
@@ -5348,5 +5350,42 @@ public class outlineGenerator {
 		}
 
 		return sps_f;
+	}
+
+	public void set_topicParams(counts c) {
+		this.set_topicParams(c, false);
+	}
+
+	public void set_topicParams(counts c, boolean lastRoundBeginningDot) {
+		
+		if (c.topicCaseStartRatio() > 30)
+			this.set_beginWithLowCaseLetter(true);
+		else if (c.topicCaseStartRatio() > 20 && c.lev2TopicCaseStartRatio() >= c.lev1TopicCaseStartRatio() * 1.5)
+			this.set_beginWithLowCaseLetter(true);
+		else
+			this.set_beginWithLowCaseLetter(false);
+
+
+		LoggerSingleton.info("Total Topic: " + c.countSum() + " Low Case Start: " + c.countLowSum()
+				+ " Ratio: " + c.topicCaseStartRatio() + "% " + this.is_beginWithLowCaseLetter());
+		LoggerSingleton.info("Lev-1 Topic: " + c.count1 + " Low Case Start: " + c.count1low + " Ratio: "
+				+ c.lev1TopicCaseStartRatio() + "%");
+		LoggerSingleton.info("Lev-2 Topic: " + c.count2 + " Low Case Start: " + c.count2low + " Ratio: "
+				+ c.lev2TopicCaseStartRatio() + "%");
+
+		this.set_haveSignBeforeSubtopic(lastRoundBeginningDot || c.topicWithDotRatio() >= 10);
+
+		if (lastRoundBeginningDot) {
+			LoggerSingleton.info("All dots have been removed in this round, we must keep this status as TRUE.");
+		} else {
+			LoggerSingleton.info("Total Topic: " + c.countSum() + " With a dot: " + c.countDotSum()
+					+ " Ratio: " + c.topicWithDotRatio() + "% " + this.is_haveSignBeforeSubtopic());
+			LoggerSingleton.info(
+					"Lev-1 Topic: " + c.count1 + " With a dot: " + c.count1dot + " Ratio: " + c.lev1WithDotRatio() + "%");
+			LoggerSingleton.info(
+					"Lev-2 Topic: " + c.count2 + " With a dot: " + c.count2dot + " Ratio: " + c.lev2WithDotRatio() + "%");
+		}
+		
+		
 	}
 }
