@@ -112,6 +112,27 @@ public class outlineGenerator {
 		this._haveSignBeforeSubtopic = _haveSignBeforeSubtopic;
 	}
 
+
+	private boolean isInSimilarPosition(int pos1, int pos2, int length1, int length2) {
+		int maxLength = Math.max(length1, length2);
+
+		if (maxLength < 4)
+			return true;
+
+		if (Math.abs(pos1 - pos2) <= maxLength / 3)
+			return true;
+
+		if (Math.abs(length1 - pos1 - length2 + pos2) <= maxLength / 3)
+			return true;
+
+		if (Math.abs((double) pos1 / (double) length1 - (double) pos2 / (double) length2) <= 0.25)
+			return true;
+
+		System.out.println("Ignore remote perfectly-matching pair: video-" + (pos2 + 1) + ", file-" + (pos1 + 1));
+
+		return false;
+	}
+	
 	//Real Functions below
 
 	public ArrayList<textOutline> generateOutline(ArrayList<textLine> tll) throws IOException
@@ -736,8 +757,7 @@ public class outlineGenerator {
 				tl2.add(t);
 			else
 			{
-				slidePage sp = this._isInitial ? new slidePage(tl2, _pageWidth, _pageHeight)
-							 : new slidePage(tl2, _pageWidth, _pageHeight, _potentialTitleArea, _potentialHierarchicalGap, _beginWithLowCaseLetter, _haveSignBeforeSubtopic, this._lectureID);
+				slidePage sp = new slidePage(tl2, _pageWidth, _pageHeight);
 				sps.add(sp);
 				LoggerSingleton.info();
 				tl2.clear();
@@ -745,8 +765,7 @@ public class outlineGenerator {
 				tl2.add(t);
 			}
 		}
-		slidePage spl = this._isInitial ? new slidePage(tl2, _pageWidth, _pageHeight)
-					  : new slidePage(tl2, _pageWidth, _pageHeight, _potentialTitleArea, _potentialHierarchicalGap, _beginWithLowCaseLetter, _haveSignBeforeSubtopic, this._lectureID);
+		slidePage spl = new slidePage(tl2, _pageWidth, _pageHeight);
 		sps.add(spl);
 		tl2.clear();
 		tll.clear();
@@ -5142,13 +5161,12 @@ public class outlineGenerator {
 		for(int i = 0; i < sps_f.size(); i++)
 		{
 			int syncPosInVideo = -1;
-			for(int j = 0; j < sps.size(); j++)
+			for(int j = lastSyncPosInVideo + 1; j < sps.size(); j++)
 			{
-				if(similarityMatrix[i][j] == 1)
-				{
-					if(syncPosInVideo < 0)
+				if (similarityMatrix[i][j] == 1 && isInSimilarPosition(i, j, sps_f.size(), sps.size())) {
+					if (syncPosInVideo < 0)
 						syncPosInVideo = j;
-					else if(Math.abs(j - i) < Math.abs(syncPosInVideo - i))
+					else if (Math.abs(j - i) < Math.abs(syncPosInVideo - i))
 						syncPosInVideo = j;
 				}
 
@@ -5164,9 +5182,8 @@ public class outlineGenerator {
 				//First synchronize the pages between two "perfectly matched" pages
 				if(i - lastSyncPosInFile > 1)
 				{
-					//Same distance of file gap and video gap
-					if(i - lastSyncPosInFile == syncPosInVideo - lastSyncPosInVideo)
-					{
+					// Same distance of file gap and video gap
+					if (i - lastSyncPosInFile == syncPosInVideo - lastSyncPosInVideo && i - lastSyncPosInFile <= 3) {
 						for(int k = 1; lastSyncPosInFile + k < i; k++)
 						{
 							sps_f.get(lastSyncPosInFile + k).set_startTime(sps.get(lastSyncPosInVideo + k).get_startTime());
@@ -5189,18 +5206,17 @@ public class outlineGenerator {
 						int tempSyncPosInVideo = lastSyncPosInVideo;
 						for(int x = lastSyncPosInFile + 1; x < i; x++)
 						{
-							if(i - x + 1 == syncPosInVideo - tempSyncPosInVideo)
-							{
+							if (i - x + 1 == syncPosInVideo - tempSyncPosInVideo && i - x + 1 <= 3) {
 								for(int k = 0; x + k < i; k++)
 								{
 									sps_f.get(x + k).set_startTime(sps.get(tempSyncPosInVideo + k + 1).get_startTime());
 									for(int l = 0; l < sps_f.get(x + k).get_texts().size(); l++)
 										sps_f.get(x + k).get_texts().get(l).set_time(sps.get(tempSyncPosInVideo + k + 1).get_startTime());
 
-									if(this.isSplitPage(sps.get(tempSyncPosInVideo + k)) && !this.isSplitPage(sps_f.get(x + k)))
+									if(this.isSplitPage(sps.get(tempSyncPosInVideo + k + 1)) && !this.isSplitPage(sps_f.get(x + k)))
 									{
-										sps.get(tempSyncPosInVideo + k).set_PageNum(sps_f.get(x + k).get_PageNum());
-										sps_f.set(x + k, sps.get(tempSyncPosInVideo + k));
+										sps.get(tempSyncPosInVideo + k + 1).set_PageNum(sps_f.get(x + k).get_PageNum());
+										sps_f.set(x + k, sps.get(tempSyncPosInVideo + k + 1));
 										LoggerSingleton.info("Synchronize-subPos {" + (tempSyncPosInVideo + k + 2) + " -> " + (x + k + 1) + "} with split-page protection");
 									}
 									else

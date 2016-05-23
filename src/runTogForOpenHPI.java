@@ -3,9 +3,6 @@ import java.sql.*;
 import java.util.*;
 
 import org.apache.commons.cli.*;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import javax.xml.parsers.*;
@@ -83,7 +80,7 @@ public class runTogForOpenHPI {
 			finalResults = og.generateOutline(tll);
 		tll.clear();
 
-		int count1=0, count2=0, count1low=0, count2low=0, count1dot=0, count2dot=0;
+		int count1 = 1, count2 = 1, count1low = 0, count2low = 0, count1dot = 0, count2dot = 0;
 		for(int i = 0; i < finalResults.size(); i++)
 		{
 			if(finalResults.get(i).get_child() == 0)
@@ -189,8 +186,8 @@ public class runTogForOpenHPI {
 			tll.clear();
 
 			// Update the status of "LowCaseStart" and "HavingDot" for this round
-			count1 = 0;
-			count2 = 0;
+			count1 = 1;
+			count2 = 1;
 			count1low = 0;
 			count2low = 0;
 			count1dot = 0;

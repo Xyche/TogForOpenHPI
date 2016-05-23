@@ -147,9 +147,9 @@ public class slidePage {
 				//list.get(i).set_text("#NoUseString#");
 				list.get(i).set_type(-2);
 			}
-			else if(list.get(i).get_height() <= 8*hp)
+			else if(list.get(i).get_height() <= 6 * hp)
 				list.get(i).set_type(-2);
-			else if(list.get(i).get_height() <= 10*hp)
+			else if(list.get(i).get_height() <= 8 * hp)
 				list.get(i).set_type(-3);
 		}
 

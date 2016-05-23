@@ -2,6 +2,7 @@ package dataStructure;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +12,7 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.util.PDFTextStripper;
 import org.apache.pdfbox.util.TextPosition;
 
+import helper.Constants;
 import sharedMethods.algorithmInterface;
 
 
@@ -29,7 +31,7 @@ public class pdfParser extends PDFTextStripper{
 		//System.out.println(pdf.getNumberOfPages());
 		pdfParser pdfStripper = new pdfParser();
 		
-		List allPages = pdf.getDocumentCatalog().getAllPages();
+		List<?> allPages = pdf.getDocumentCatalog().getAllPages();
 		ArrayList<textLine> tls = new ArrayList<textLine>();
 		
 		
@@ -59,12 +61,21 @@ public class pdfParser extends PDFTextStripper{
 	        	textLine pre = new textLine();
 	        	pre.set_count(-1);
 	        	
-	        	for(int i = 0; i < pdfStripper.getCharactersByArticle().size(); i++)
-	        	{
-	        		for(int j = 0; j < pdfStripper.getCharactersByArticle().get(i).size(); j++)
+	        	for(List<TextPosition> chars: pdfStripper.getCharactersByArticle()){
+					if (chars.size() <= 0) {
+						// Add an empty image page by setting one single
+						// textline
+						textLine current = new textLine(k + 1, "**Image Page, No Text**", 0,
+								(int) (height * rate * 0.2), (int) (width * rate * 0.4), (int) (width * rate * 0.2),
+								(int) (height * rate * 0.05), new Time(0));
+						tls.add(current);
+						continue;
+					}
+
+					int last_idx = -1;
+	        		for(TextPosition text: chars)
 	        		{
-	        			TextPosition text = pdfStripper.getCharactersByArticle().get(i).get(j);
-	        			TextPosition last = j == 0 ? pdfStripper.getCharactersByArticle().get(i).get(j) : pdfStripper.getCharactersByArticle().get(i).get(j-1);
+	        			TextPosition last = chars.get(Math.max(last_idx++, 0));
 	        	        
 	        	        if(pre.get_count() < 0)
 	        	        {
@@ -78,7 +89,7 @@ public class pdfParser extends PDFTextStripper{
 	        	        else if(pre.get_left() + pre.get_width() + Math.max(text.getWidthDirAdj(), last.getWidthDirAdj())*1.5 < text.getXDirAdj())
 	        	        {
 	        	        	//System.out.println("Horizontal");
-	        	        	int Diff = width/height >= 0.75 ? 768 - (int)(height*rate) : 1024 - (int)(width*rate);
+	        	        	int Diff = width/height >= 0.75 ? Constants.DEFAULT_HEIGHT - (int)(height*rate) : Constants.DEFAULT_WIDTH - (int)(width*rate);
 	        	        	
 	        	        	int sWidth = (int)(pre.get_width()*rate);
 	        	        	int sLeft = width/height >= 0.75 ? (int)(pre.get_left()*rate) : (int)(pre.get_left()*rate) + Diff/2;	        	        		        	        	
@@ -100,7 +111,7 @@ public class pdfParser extends PDFTextStripper{
 	        	        else if(Math.abs(pre.get_top() - text.getYDirAdj()) >= 1)
 	        	        {
 	        	        	//System.out.println("Vertical");
-	        	        	int Diff = width/height >= 0.75 ? 768 - (int)(height*rate) : 1024 - (int)(width*rate);
+	        	        	int Diff = width/height >= 0.75 ? Constants.DEFAULT_HEIGHT - (int)(height*rate) : Constants.DEFAULT_WIDTH - (int)(width*rate);
 	        	        	
 	        	        	int sWidth = (int)(pre.get_width()*rate);
 	        	        	int sLeft = width/height >= 0.75 ? (int)(pre.get_left()*rate) : (int)(pre.get_left()*rate) + Diff/2;	        	        		        	        	
@@ -134,10 +145,11 @@ public class pdfParser extends PDFTextStripper{
 	        	        	pre.set_width((int)(text.getWidthDirAdj() + text.getXDirAdj()) - pre.get_left());
 	        	        	//pre.set_height((int)text.getHeightDir());
 	        	        	
-	        	        	if(j == pdfStripper.getCharactersByArticle().get(i).size()-1)
+	        	        	if(chars.lastIndexOf(text) == chars.size() - 1)
 	        	        	{
 	        	        		//System.out.println("End");
-		        	        	int Diff = width/height >= 0.75 ? 768 - (int)(height*rate) : 1024 - (int)(width*rate);
+
+		        	        	int Diff = width/height >= 0.75 ? Constants.DEFAULT_HEIGHT - (int)(height*rate) : Constants.DEFAULT_WIDTH - (int)(width*rate);
 		        	        	
 		        	        	int sWidth = (int)(pre.get_width()*rate);
 		        	        	int sLeft = width/height >= 0.75 ? (int)(pre.get_left()*rate) : (int)(pre.get_left()*rate) + Diff/2;	        	        		        	        	
