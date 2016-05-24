@@ -474,7 +474,7 @@ public class outlineGenerator {
 
 		int tagPos = setIsTagAndGetTagPos(sps);
 
-		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()) - 1);
+		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()));
 
 		LoggerSingleton.info("< STEP 10: Search index page >");
 		sps = searchIndexPage(sps);
@@ -834,7 +834,9 @@ public class outlineGenerator {
 
 		for (slidePage page: sps.subList(start, end)){
 			if(page == null) continue;
-			slidePage nextPage = sps.get(sps.indexOf(page) + 1);
+			int pageIdx = sps.indexOf(page);
+			if(pageIdx >= sps.size() - 1) continue;
+			slidePage nextPage = sps.get(pageIdx + 1);
 //		for (int i = beginPos; i < endPos; i++) {
 			boolean continuePage = false;
 
