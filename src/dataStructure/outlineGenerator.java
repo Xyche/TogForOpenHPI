@@ -768,7 +768,7 @@ public class outlineGenerator {
 			for (slidePage page: sps.subList(beginPagePos + 1, sps.size())){
 				if (page == null) continue;
 				int pageIdx = sps.indexOf(page);
-				slidePage previousPage = sps.get(pageIdx - 1), nextPage = sps.get(pageIdx + 1);
+				slidePage previousPage = sps.get(pageIdx - 1);
 				if (page.get_PageNum() == endPageNum) {
 					if (page.get_startTime().getTime() - previousPage.get_startTime().getTime() < 5001)
 						flashPageCount++;
@@ -788,7 +788,9 @@ public class outlineGenerator {
 						ave += 1;
 				} else
 					ave -= page.get_pageType();
-
+				
+				if (pageIdx + 1 >= sps.size()) continue;
+				slidePage nextPage = sps.get(pageIdx + 1);
 				if (nextPage.get_startTime().getTime() - page.get_startTime().getTime() < 5001)
 					flashPageCount++;
 			}
