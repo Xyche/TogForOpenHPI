@@ -175,69 +175,71 @@ public class runTogForOpenHPI {
 
 		averageSegLength = Math.max(haveSegment ? averageSegLength : Constants.MAX_AVG_DURATION, onlyTitles.isEmpty() ? 0 : totalTime / onlyTitles.size());
 		LoggerSingleton.info(averageSegLength);
-			
-		for(Integer duration: durationBySeconds) {
-			int i = durationBySeconds.indexOf(duration);
-			currentSum += duration;
-
-			boolean isLast = i == durationBySeconds.size() - 1;
-			textOutline title = onlyTitles.get(i), currentTitle = onlyTitles.get(currentPos);
-
-			int bias = 0;
-			if(haveSegment){
-				if (title.get_hierarchy() > 0) continue;
+		
+		if(!onlyTitles.isEmpty()){
+			for(Integer duration: durationBySeconds) {
+				int i = durationBySeconds.indexOf(duration);
+				currentSum += duration;
 				
-				if (title.get_childEnd() == 0 || i == 0) {
-					lastPos = currentPos = i;
-					if (isLast) 
-						title.set_childEnd(currentSum);
-					continue;
-
-				} else if (title.get_childEnd() < 0) {
-					if (currentSum > averageSegLength || isLast) {
-						lastPos = currentPos;
+				boolean isLast = i == durationBySeconds.size() - 1;
+				textOutline title = onlyTitles.get(i), currentTitle = onlyTitles.get(currentPos);
+				
+				int bias = 0;
+				if(haveSegment){
+					if (title.get_hierarchy() > 0) continue;
+					
+					if (title.get_childEnd() == 0 || i == 0) {
+						lastPos = currentPos = i;
+						if (isLast) 
+							title.set_childEnd(currentSum);
+						continue;
 						
-						if (currentPos == 0 && duration >= Constants.MAX_AVG_DURATION / 2)
-							currentSum -= duration;
-						else
-							bias = 1;
-						
-						currentTitle.set_childEnd(currentSum);
+					} else if (title.get_childEnd() < 0) {
+						if (currentSum > averageSegLength || isLast) {
+							lastPos = currentPos;
+							
+							if (currentPos == 0 && duration >= Constants.MAX_AVG_DURATION / 2)
+								currentSum -= duration;
+							else
+								bias = 1;
+							
+							currentTitle.set_childEnd(currentSum);
+							currentPos = i + bias;
+							currentSum = 0;
+						}
+					} else {
+						if (currentSum > averageSegLength * 0.3) {
+							currentTitle.set_childEnd(currentSum);
+							lastPos = currentPos;
+						} else {
+							textOutline lastTitle = onlyTitles.get(lastPos); 
+							lastTitle.set_childEnd(currentSum + lastTitle.get_childEnd());
+							if (currentTitle.get_childEnd() == 0)
+								currentTitle.set_childEnd(-1);
+						}
 						currentPos = i + bias;
 						currentSum = 0;
 					}
 				} else {
-					if (currentSum > averageSegLength * 0.3) {
+					if (isLast)
 						currentTitle.set_childEnd(currentSum);
-						lastPos = currentPos;
-					} else {
-						textOutline lastTitle = onlyTitles.get(lastPos); 
-						lastTitle.set_childEnd(currentSum + lastTitle.get_childEnd());
-						if (currentTitle.get_childEnd() == 0)
-							currentTitle.set_childEnd(-1);
-					}
-					currentPos = i + bias;
-					currentSum = 0;
+					else
+						if (currentSum > averageSegLength) {
+							
+							if (currentPos == 0 && duration >= Constants.MAX_AVG_DURATION / 2)
+								currentSum -= duration;
+							else
+								bias = 1;
+							
+							currentTitle.set_childEnd(currentSum);
+							currentPos = i + bias;
+							currentSum = 0;
+						}
+					
 				}
-			} else {
-				if (isLast)
-					currentTitle.set_childEnd(currentSum);
-				else
-					if (currentSum > averageSegLength) {
-						
-						if (currentPos == 0 && duration >= Constants.MAX_AVG_DURATION / 2)
-							currentSum -= duration;
-						else
-							bias = 1;
-						
-						currentTitle.set_childEnd(currentSum);
-						currentPos = i + bias;
-						currentSum = 0;
-					}
-				
 			}
+		
 		}
-
 		count = 0;
 		int sum = 0;
 		File newFile = new File(Constants.joinPath(workingFolder, lecture_id, "seg"));
