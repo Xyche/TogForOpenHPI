@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.TimeZone;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -27,7 +28,16 @@ import sharedMethods.algorithmInterface;
 
 public class outlineGenerator {
 
+	private int pageWidth = 1024;
+	private int pageHeight = 768;
+	private String lectureID = "";
+	private String workingDir = "";
+	private boolean initial = true;
+	
+	private boolean isTag = false;
+	
 	public outlineGenerator() {
+		this(Constants.DEFAULT_WIDTH, Constants.DEFAULT_HEIGHT, "", "");
 	}
 
 	public outlineGenerator(int pageWidth, int pageHeight, String workingDir, String lectureID) {
@@ -37,99 +47,146 @@ public class outlineGenerator {
 		set_workingDir(workingDir);
 	}
 
-	private int _pageWidth = 1024;
-	private int _pageHeight = 768;
-	private String _lectureID = "";
-	private String _workingDir = "";
-	private boolean _isInitial = true;
 
 	// 4 parameters in _potentialTitleArea : top, height, align(0:left,
 	// 1:middle), axis(left or middle)
-	private ArrayList<int[]> _potentialTitleArea = new ArrayList<int[]>();
+	private ArrayList<int[]> potentialTitleArea = new ArrayList<int[]>();
 	private ArrayList<int[]> lastRoundTableAreas = new ArrayList<int[]>();
 
-	private ArrayList<Integer> _potentialHierarchicalGap = new ArrayList<Integer>();
+	private ArrayList<Integer> potentialHierarchicalGap = new ArrayList<Integer>();
 	private ArrayList<Integer> lastRoundGaps = new ArrayList<Integer>();
 
-	private boolean _beginWithLowCaseLetter = false;
-	private boolean _haveSignBeforeSubtopic = false;
+	private boolean beginWithLowCaseLetter = false;
+	private boolean haveSignBeforeSubtopic = false;
 
 	private boolean lastRoundLowCaseStart = false;
 	private boolean lastRoundBeginningDot = false;
 
-	public boolean is_isInitial() {
-		return _isInitial;
-	}
-
-	public void set_isInitial(boolean _isInitial) {
-		this._isInitial = _isInitial;
+	public boolean isInitial() {
+		return initial;
 	}
 
 	public int get_pageWidth() {
-		return _pageWidth;
+		return pageWidth;
 	}
 
 	public void set_pageWidth(int _pageWidth) {
-		this._pageWidth = _pageWidth;
+		this.pageWidth = _pageWidth;
 	}
 
 	public int get_pageHeight() {
-		return _pageHeight;
+		return pageHeight;
 	}
 
 	public void set_pageHeight(int _pageHeight) {
-		this._pageHeight = _pageHeight;
+		this.pageHeight = _pageHeight;
 	}
 
 	public String get_workingDir() {
-		return this._workingDir;
+		return this.workingDir;
 	}
 
 	public String get_lectureID() {
-		return _lectureID;
+		return lectureID;
 	}
 
 	public void set_workingDir(String workingDir) {
-		this._workingDir = workingDir;
+		this.workingDir = workingDir;
 	}
 
 	public void set_lectureID(String _lectureID) {
-		this._lectureID = _lectureID;
+		this.lectureID = _lectureID;
 	}
 
+	
+	
+	
 	public ArrayList<int[]> get_potentialTitleArea() {
-		return _potentialTitleArea;
+		return potentialTitleArea;
 	}
 
 	public void set_potentialTitleArea(ArrayList<int[]> _potentialTitleArea) {
-		this._potentialTitleArea = _potentialTitleArea;
+		this.potentialTitleArea = _potentialTitleArea;
 	}
 
 	public ArrayList<Integer> get_potentialHierarchicalGap() {
-		return _potentialHierarchicalGap;
+		return potentialHierarchicalGap;
 	}
 
 	public void set_potentialHierarchicalGap(ArrayList<Integer> _potentialHierarchicalGap) {
-		this._potentialHierarchicalGap = _potentialHierarchicalGap;
+		this.potentialHierarchicalGap = _potentialHierarchicalGap;
 	}
 
 	public boolean is_beginWithLowCaseLetter() {
-		return _beginWithLowCaseLetter;
+		return beginWithLowCaseLetter;
 	}
 
 	public void set_beginWithLowCaseLetter(boolean _beginWithLowCaseLetter) {
-		this._beginWithLowCaseLetter = _beginWithLowCaseLetter;
+		this.beginWithLowCaseLetter = _beginWithLowCaseLetter;
 	}
 
 	public boolean is_haveSignBeforeSubtopic() {
-		return _haveSignBeforeSubtopic;
+		return haveSignBeforeSubtopic;
 	}
 
 	public void set_haveSignBeforeSubtopic(boolean _haveSignBeforeSubtopic) {
-		this._haveSignBeforeSubtopic = _haveSignBeforeSubtopic;
+		this.haveSignBeforeSubtopic = _haveSignBeforeSubtopic;
 	}
 
-	// Real Functions below
+
+	// main generation method
+	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF,
+			boolean changeBBImageNames) throws IOException, InstantiationException, IllegalAccessException,
+					ClassNotFoundException, SQLException, ParserConfigurationException, SAXException, ParseException {
+
+		this.potentialTitleArea.clear();
+		this.potentialHierarchicalGap.clear();
+		
+		if (havePPTX){
+			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages for video stream>");
+			tll = removeLogo(tll);
+			
+			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
+
+			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
+			step3(sps);
+
+			String pptxName = Constants.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX);
+			ArrayList<slidePage> sps_pptx = new pptParser().analyzePPTX(pptxName);
+			LoggerSingleton.show("< RESULT after step 3 (PPTX file)>", sps_pptx);
+
+			return generate(sps, sps_pptx);
+		} else if (havePDF){
+			LoggerSingleton.info("< STEP 2-1: Delete logo which appears in same position of many pages for video stream>");
+			tll = removeLogo(tll);
+			
+			ArrayList<textLine> tll_pdf = OCRLoader.loadOcrResults(OCROriginMode.PDF, get_workingDir(), get_lectureID(), TimeZone.getDefault().getRawOffset(), changeBBImageNames);
+			LoggerSingleton.info("< STEP 2-2: Delete logo which appears in same position of many pages for PDF file>");
+			tll_pdf = removeLogo(tll_pdf);
+
+			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
+			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
+
+			ArrayList<slidePage> sps_pdf = generateSlidePageStructure(tll_pdf, "< STEP 3-2: Find title and load in hierarchy for PDF file>");
+
+			LoggerSingleton.show("< RESULT after step 3 (PDF file)>", sps_pdf);
+			step3(sps_pdf);
+			return generate(sps, sps_pdf);
+			
+		} else {
+			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages >");
+			tll = removeLogo(tll);
+
+			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3: Find title and load in hierarchy >");
+
+			LoggerSingleton.show("< RESULT after step 3 >", sps);
+			step3(sps);
+			return generate(sps);
+		}
+	}
+
+	
+	// private methods needed by generate method
 
 	private void analyzeTitlePosition(ArrayList<slidePage> sps, boolean centered){
 
@@ -150,7 +207,7 @@ public class outlineGenerator {
 
 				boolean match = false;
 				for (textLine line: tl2){
-					if (t.isSameTitlePosition(line, _pageWidth, _pageHeight, centered)) {
+					if (t.isSameTitlePosition(line, pageWidth, pageHeight, centered)) {
 						line.set_left(Math.min(t.get_left(), line.get_left()));
 						line.set_top(Math.min(t.get_top(), line.get_top()));
 						line.set_bottom(Math.max(t.get_bottom(), line.get_bottom()));
@@ -173,8 +230,8 @@ public class outlineGenerator {
 		}
 
 		int totalPage = sps.size();
-		int divider = 0;
 
+		int divider = 0;
 		if (totalPage < 15)
 			divider = 3;
 		else if (totalPage < 25)
@@ -186,16 +243,13 @@ public class outlineGenerator {
 		else
 			divider = 7;
 
-		for (textLine line: Lists.reverse(tl2))
-			if (line.get_count() <= 2 || line.get_count() < totalPage / divider)
-				tl2.remove(line);
-
-
-		for (textLine line: tl2) {
-			int[] pta = { line.get_top(), line.get_bottom() - line.get_top(), line.get_type(), line.get_left() + line.get_width() / 2 };
-			this._potentialTitleArea.add(pta);
-			LoggerSingleton.info(String.format("[%d, %d, %s: %d | %d]", pta[0], pta[1], pta[2] == 1 ? "Center" : "Left", pta[3], line.get_count()));
-		}
+		
+		for (textLine line: tl2)
+			if (line.get_count() > 2 && line.get_count() >= totalPage / divider){
+				int[] pta = { line.get_top(), line.get_bottom() - line.get_top(), line.get_type(), line.get_left() + line.get_width() / 2 };
+				this.potentialTitleArea.add(pta);
+				LoggerSingleton.info(String.format("[%d, %d, %s: %d | %d]", pta[0], pta[1], pta[2] == 1 ? "Center" : "Left", pta[3], line.get_count()));
+			}
 
 	}
 
@@ -239,13 +293,10 @@ public class outlineGenerator {
 			divider = 7;
 
 		for(textLine line: tl2)
-			if (line.get_count() <= 3 || line.get_count() < totalPage / divider)
-				tl2.remove(line);
-
-		for(textLine line: tl2) {
-			this._potentialHierarchicalGap.add(line.get_slideID());
-			LoggerSingleton.info("Potential Gap: " + line.get_slideID() + '\t' + line.get_count());
-		}
+			if (line.get_count() > 3 && line.get_count() >= totalPage / divider){
+				this.potentialHierarchicalGap.add(line.get_slideID());
+				LoggerSingleton.info("Potential Gap: " + line.get_slideID() + '\t' + line.get_count());
+			}
 
 	}
 
@@ -257,7 +308,7 @@ public class outlineGenerator {
 						to.set_time(page.get_startTime());
 			} else if (page.get_pageType() <= 2) {
 				for(textOutline to: page.get_texts())
-					for (slidePage innerPage: sps.subList(sps.indexOf(page) + 1, sps.size() - 1))
+					for (slidePage innerPage: sps.subList(sps.indexOf(page) + 1, sps.size()))
 						if (to.get_child() == innerPage.get_PageNum()
 								&& to.get_time().before(page.get_startTime()))
 							to.set_time(innerPage.get_startTime());
@@ -269,10 +320,12 @@ public class outlineGenerator {
 	}
 
 	private ArrayList<slidePage> generateSlidePageStructure(ArrayList<textLine> tll, String text) throws IOException{
+		LoggerSingleton.info(text);
+		
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
 		ArrayList<slidePage> sps = new ArrayList<slidePage>();
 		int tempPageNum = 1;
-		LoggerSingleton.info(text);
+		
 		for (textLine t : tll)
 			if (t.get_slideID() == tempPageNum)
 				tl2.add(t);
@@ -289,114 +342,28 @@ public class outlineGenerator {
 		return sps;
 	}
 
-
-	public ArrayList<textOutline> generateOutline(ArrayList<textLine> tll) throws IOException {
-		LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages >");
-		tll = removeLogo(tll);
-
-		/* Generate slidePage structure from textLine, separated by slideID */
-
-		ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3: Find title and load in hierarchy >");
-		this._potentialTitleArea.clear();
-		this._potentialHierarchicalGap.clear();
-
-		LoggerSingleton.info("Frequently Used Title Area: [top, height, alignment: axis | count]");
-
-		// Analyze title position for further adaptive procedure
-		analyzeTitlePosition(sps, false);
-
-		// Search for centered PTA
-		analyzeTitlePosition(sps, true);
-
-
-		// Analyze hierarchical gap for adaptive procedure
-		analyzeHerarchicalGap(sps);
-
-		LoggerSingleton.show("< RESULT after step 3 >", sps);
-
-		ArrayList<ArrayList<Integer>> samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.show("< STEP 4: Remove repeated and empty pages >", samePageGroups);
-		sps = removeRepeatedPages(sps, samePageGroups);
-
-		samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.show("< STEP 5: Remove live show >", samePageGroups);
-		sps = removeLiveShow(sps, samePageGroups);
-
-
-		LoggerSingleton.info("< STEP 6: Combine continuous slides >");
-		sps = combineContinuedSlides(sps, 0, sps.size() - 1);
-		LoggerSingleton.show("< RESULT after step 6 >", sps);
-
-		samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.show("< STEP 7: Find tag page >", samePageGroups);
-		sps = dealWithTagPage(sps, samePageGroups);
-
-		LoggerSingleton.info("< STEP 8: Find split page and make them as visual tag page>");
-
-		sps = dealWithSplitPage(sps);
-
-		LoggerSingleton.info("< STEP 9: Find section pages and make a visual tag page for them>");
-
-		sps = dealWithSectionPage(sps);
-
-		for (slidePage page: sps){
-			if (page.get_title().length() < 1)
-				if (page.get_texts().get(0).get_hierarchy() == 1) {
-					page.set_title(page.get_texts().get(0).get_text());
-					page.get_texts().remove(0);
-				} else {
-					sps.remove(page);
-					continue;
-				}
-			for (textOutline to: page.get_texts())
-				if (to.get_hierarchy() == 0)
-					page.get_texts().remove(to);
-		}
-
-		boolean isTag = false;
-		int tagPos = 0;
-		for (slidePage page: sps)
-			if (page.get_pageType() == 2) {
-				isTag = true;
-				tagPos = sps.indexOf(page);
-				break;
+	private ArrayList<slidePage> deleteAllUnorganizedTexts(ArrayList<slidePage> sps) {
+		ArrayList<slidePage> old_sps = new ArrayList<>(sps);
+		sps.clear();
+		for (slidePage page: old_sps) {
+			if (page.get_title().length() < 1) {
+				textOutline firstText = page.get_texts().get(0);
+				if (page.get_pageType() >= 0 && firstText.get_hierarchy() == 1) {
+					page.set_title(firstText.get_text());
+					page.get_texts().remove(firstText);
+					sps.add(page);
+				} else continue;
 			}
-
-		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()) - 1);
-
-		LoggerSingleton.info("< STEP 10: Search index page >");
-
-		if (!isTag)
-			sps = findIndexPage(sps, 0, sps.size() - 1);
-		else {
-			for (slidePage page: sps){
-				int i = sps.indexOf(page);
-				if (page.get_pageType() == 2) {
-					sps = findIndexPage(sps, 0, i - 1);
-					for(textOutline currentTo: page.get_texts()){
-						int beginPos = i, endPos = i;
-						for (int k = i + 1; k < sps.size(); k++)
-							if (sps.get(k).get_PageNum() >= currentTo.get_child()) {
-								beginPos = k;
-								break;
-							}
-						for (int k = beginPos; k < sps.size(); k++)
-							if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
-								endPos = k;
-								break;
-							}
-
-						sps = findIndexPage(sps, beginPos, endPos);
-					}
-				}
-			}
+			ArrayList<textOutline> old_texts = new ArrayList<>(page.get_texts()); 
+			page.get_texts().clear();
+			for (textOutline to: old_texts)
+				if (to.get_hierarchy() != 0)
+					page.get_texts().add(to);
 		}
+		return sps;
+	}
 
-		LoggerSingleton.info("< STEP 11: Conclude a visual index page for pages with similar titles >");
-
+	private ArrayList<slidePage> concludeVisualIndexPage(ArrayList<slidePage> sps) {
 		int beginPos = 1;
 		for (int i = 0; i < sps.size(); i++) {
 			slidePage page = sps.get(i);
@@ -429,55 +396,108 @@ public class outlineGenerator {
 		if (!isTag && beginPos < sps.size() - 1)
 			sps = concludeTheme(sps, beginPos, sps.size() - 2, 3);
 
-		// Add time info to each text
+		return sps;
+	}
+
+	private ArrayList<slidePage> searchIndexPage(ArrayList<slidePage> sps) {
+		if (!isTag)
+			return findIndexPage(sps, 0, sps.size() - 1);
+		else {
+			for (slidePage page: sps){
+				int i = sps.indexOf(page);
+				if (page.get_pageType() == 2) {
+					sps = findIndexPage(sps, 0, i - 1);
+					for(textOutline currentTo: page.get_texts()){
+						int beginPos = i, endPos = i;
+						for (int k = i + 1; k < sps.size(); k++)
+							if (sps.get(k).get_PageNum() >= currentTo.get_child()) {
+								beginPos = k;
+								break;
+							}
+						for (int k = beginPos; k < sps.size(); k++)
+							if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
+								endPos = k;
+								break;
+							}
+
+						sps = findIndexPage(sps, beginPos, endPos);
+					}
+				}
+			}
+		return sps;
+		}
+	}
+
+	private int setIsTagAndGetTagPos(ArrayList<slidePage> sps) {
+		isTag = false;
+		for (slidePage page: sps)
+			if (page.get_pageType() == 2) {
+				isTag = true;
+				return sps.indexOf(page);
+			}
+		return 0;
+	}
+
+	private void step3(ArrayList<slidePage> sps) {
+		analyzeTitlePosition(sps, false);
+		analyzeTitlePosition(sps, true);
+		analyzeHerarchicalGap(sps);
+	}
+	
+	private ArrayList<textOutline> generate(ArrayList<slidePage> sps) {
+		ArrayList<ArrayList<Integer>> samePageGroups = findSamePages(sps);
+		LoggerSingleton.show("< STEP 4: Remove repeated and empty pages >", samePageGroups);
+
+
+		sps = removeRepeatedPages(sps, samePageGroups);
+		samePageGroups = findSamePages(sps);
+		LoggerSingleton.show("< STEP 5: Remove live show >", samePageGroups);
+		sps = removeLiveShow(sps, samePageGroups);
+
+		LoggerSingleton.info("< STEP 6: Combine continuous slides >");
+		sps = combineContinuedSlides(sps, 0, sps.size() - 1);
+		LoggerSingleton.show("< RESULT after step 6 >", sps);
+
+		samePageGroups = findSamePages(sps);
+		LoggerSingleton.show("< STEP 7: Find tag page >", samePageGroups);
+
+		sps = dealWithTagPage(sps, samePageGroups);
+
+		LoggerSingleton.info("< STEP 8: Find split page and make them as visual tag page>");
+		sps = dealWithSplitPage(sps);
+
+		LoggerSingleton.info("< STEP 9: Find section pages and make a visual tag page for them>");
+		sps = dealWithSectionPage(sps);
+
+		sps = deleteAllUnorganizedTexts(sps);
+
+		int tagPos = setIsTagAndGetTagPos(sps);
+
+		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()) - 1);
+
+		LoggerSingleton.info("< STEP 10: Search index page >");
+		sps = searchIndexPage(sps);
+
+		LoggerSingleton.info("< STEP 11: Conclude a visual index page for pages with similar titles >");
+		sps = concludeVisualIndexPage(sps);
 
 		addInfoToEachText(sps);
 
-		/* show result */
 		LoggerSingleton.show("< RESULT after step 10 >", sps);
 
-		ArrayList<textOutline> finalResults = new ArrayList<textOutline>();
-		finalResults = makeFinalTextOutlinesFromSlidePages(sps);
-
-		this.set_isInitial(false);
-		return finalResults;
+		this.initial = false;
+		return makeFinalTextOutlinesFromSlidePages(sps);
 	}
-
-	public ArrayList<textOutline> generateOutlineWithPDF(ArrayList<textLine> tll, ArrayList<textLine> tll_pdf)
-			throws IOException {
-		ArrayList<String> groups = new ArrayList<>();
-		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-
-		LoggerSingleton.info("< STEP 2-1: Delete logo which appears in same position of many pages for video stream>");
-		tll = removeLogo(tll);
-		LoggerSingleton.info("< STEP 2-2: Delete logo which appears in same position of many pages for PDF file>");
-		tll_pdf = removeLogo(tll_pdf);
-
-		/* Generate slidePage structure from textLine, separated by slideID */
-		ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
-		LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
-
-		/* Generate slidePage structure from textLine, separated by slideID */
-		ArrayList<slidePage> sps_pdf = generateSlidePageStructure(tll_pdf, "< STEP 3-2: Find title and load in hierarchy for PDF file>");
-
-		this._potentialTitleArea.clear();
-		this._potentialHierarchicalGap.clear();
-
-		analyzeTitlePosition(sps_pdf, false);
-
-		// Search for centered PTA
-		analyzeTitlePosition(sps_pdf, true);
-
-		analyzeHerarchicalGap(sps_pdf);
-
-		LoggerSingleton.show("< RESULT after step 3 (PDF file)>", sps_pdf);
-
-		// sps = synchronizeVideoAndFile(sps, sps_pdf);
-		sps = synchronizeVideoToFile(sps, sps_pdf);
-		// sps_pdf.clear();
-		/* show result */
+	
+	private ArrayList<textOutline> generate(ArrayList<slidePage> sps, ArrayList<slidePage> other) throws IOException{
+		sps = synchronizeVideoToFile(sps, other);
 		LoggerSingleton.show("< RESULT after step 3.5: synchronization >", sps);
-
+		writeSyncFile(sps);
+		
+		return generate(sps);
+	}
+	
+	private void writeSyncFile(ArrayList<slidePage> sps) throws IOException {
 		File newFile = new File(Constants.joinPath(this.get_workingDir(), this.get_lectureID(), "sync"));
 		if (newFile.exists()) newFile.delete();
 
@@ -487,946 +507,160 @@ public class outlineGenerator {
 			output.newLine();
 		}
 		output.close();
-
-		ArrayList<ArrayList<Integer>> samePageGroups = new ArrayList<ArrayList<Integer>>();
-		samePageGroups = findSamePages(sps);
-		LoggerSingleton.show("< STEP 4: Remove repeated and empty pages >", samePageGroups);
-
-
-		sps = removeRepeatedPages(sps, samePageGroups);
-
-		samePageGroups = findSamePages(sps);
-		LoggerSingleton.show("< STEP 5: Remove live show >", samePageGroups);
-
-		sps = removeLiveShow(sps, samePageGroups);
-
-		LoggerSingleton.info("< STEP 6: Combine continuous slides >");
-
-		sps = combineContinuedSlides(sps, 0, sps.size() - 1);
-		LoggerSingleton.show("< RESULT after step 6 >", sps);
-
-
-		samePageGroups = findSamePages(sps);
-		LoggerSingleton.show("< STEP 7: Find tag page >", samePageGroups);
-
-		sps = dealWithTagPage(sps, samePageGroups);
-
-		LoggerSingleton.info("< STEP 8: Find split page and make them as visual tag page>");
-
-		sps = dealWithSplitPage(sps);
-
-		LoggerSingleton.info("< STEP 9: Find section pages and make a visual tag page for them>");
-
-		sps = dealWithSectionPage(sps);
-
-		// Now, delete all unorganized texts and pages without title
-		for (slidePage page: sps){
-			if (page.get_title().length() < 1)
-				if (page.get_texts().get(0).get_hierarchy() == 1) {
-					page.set_title(page.get_texts().get(0).get_text());
-					page.get_texts().remove(0);
-				} else {
-					sps.remove(page);
-					continue;
-				}
-			for (textOutline to: page.get_texts())
-				if (to.get_hierarchy() == 0)
-					page.get_texts().remove(to);
-		}
-
-
-		boolean isTag = false;
-		int tagPos = 0;
-		for (slidePage page: sps)
-			if (page.get_pageType() == 2) {
-				isTag = true;
-				tagPos = sps.indexOf(page);
-				break;
-			}
-
-
-		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()) - 1);
-
-		LoggerSingleton.info("< STEP 10: Search index page >");
-
-		if (!isTag)
-			sps = findIndexPage(sps, 0, sps.size() - 1);
-		else {
-			for (slidePage page: sps){
-				int i = sps.indexOf(page);
-				if (page.get_pageType() == 2) {
-					sps = findIndexPage(sps, 0, i - 1);
-					for(textOutline currentTo: page.get_texts()){
-						int beginPos = i, endPos = i;
-						for (int k = i + 1; k < sps.size(); k++)
-							if (sps.get(k).get_PageNum() >= currentTo.get_child()) {
-								beginPos = k;
-								break;
-							}
-						for (int k = beginPos; k < sps.size(); k++)
-							if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
-								endPos = k;
-								break;
-							}
-
-						sps = findIndexPage(sps, beginPos, endPos);
-					}
-				}
-			}
-		}
-
-		LoggerSingleton.info("< STEP 11: Conclude a visual index page for pages with similar titles >");
-
-		int beginPos = 1;
-		for (int i = 0; i < sps.size(); i++) {
-			slidePage page = sps.get(i);
-			if (page.get_pageType() <= 0) continue;
-			else if (page.get_pageType() == 1) {
-				int currentSlideNum = page.get_PageNum();
-				if (beginPos < i - 1)
-					sps = concludeTheme(sps, beginPos, i - 1, 3);
-
-				for (int j = i; j < sps.size(); j++)
-					if (sps.get(j).get_PageNum() >= currentSlideNum) {
-						i = j;
-						break;
-					}
-
-				currentSlideNum = page.get_texts().get(page.get_texts().size() - 1).get_childEnd();
-				for (int j = i; j < sps.size(); j++)
-					if (sps.get(j).get_PageNum() >= currentSlideNum) {
-						i = j;
-						beginPos = j + 1;
-						break;
-					}
-
-			} else if (page.get_pageType() == 2) {
-				sps = concludeTheme(sps, beginPos, i - 1, 3);
-				isTag = true;
-				break;
-			}
-		}
-		if (!isTag && beginPos < sps.size() - 1)
-			sps = concludeTheme(sps, beginPos, sps.size() - 2, 3);
-
-		// Add time info to each text
-
-		addInfoToEachText(sps);
-
-		/* show result */
-		LoggerSingleton.show("< RESULT after step 10 >", sps);
-
-		// LoggerSingleton.info("$$$$\tFinal Slides:\t" + sps.size());
-
-		ArrayList<textOutline> finalResults = new ArrayList<textOutline>();
-		finalResults = makeFinalTextOutlinesFromSlidePages(sps);
-
-		this.set_isInitial(false);
-		return finalResults;
+		
 	}
 
-	public ArrayList<textOutline> generateOutlineWithPPTX(ArrayList<textLine> tll, String pptxName) throws IOException {
-		LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages for video stream>");
-		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-		tll = removeLogo(tll);
-
-		/* Generate slidePage structure from textLine, separated by slideID */
-		ArrayList<slidePage> sps = new ArrayList<slidePage>();
-		int tempPageNum = 1;
-		LoggerSingleton.info("< STEP 3-1: Find title and load in hierarchy for video stream>");
-		for (int i = 0; i < tll.size(); i++) {
-			textLine t = tll.get(i);
-			if (t.get_slideID() == tempPageNum)
-				tl2.add(t);
-			else {
-				slidePage sp = this._isInitial ? new slidePage(tl2, _pageWidth, _pageHeight)
-						: new slidePage(tl2, _pageWidth, _pageHeight, _potentialTitleArea, _potentialHierarchicalGap,
-								_beginWithLowCaseLetter, _haveSignBeforeSubtopic, this._lectureID);
-				sps.add(sp);
-				LoggerSingleton.info();
-				tl2.clear();
-				tempPageNum = t.get_slideID();
-				tl2.add(t);
-			}
-		}
-		slidePage spl = this._isInitial ? new slidePage(tl2, _pageWidth, _pageHeight)
-				: new slidePage(tl2, _pageWidth, _pageHeight, _potentialTitleArea, _potentialHierarchicalGap,
-						_beginWithLowCaseLetter, _haveSignBeforeSubtopic, this._lectureID);
-		sps.add(spl);
-		tl2.clear();
-		tll.clear();
-
-		// Analyze title position for further adaptive procedure
-		int totalPage = sps.size();
-		this._potentialTitleArea.clear();
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_PageNum() < 0) {
-				sps.remove(i);
-				totalPage--;
-				i--;
-				continue;
-			} else if (sps.get(i).get_title().length() < 1)
-				continue;
-			else {
-				if (sps.get(i).get_titleLocation().length != 4)
-					continue;
-				textLine t = new textLine();
-				t.set_left(sps.get(i).get_titleLocation()[0]);
-				t.set_top(sps.get(i).get_titleLocation()[2]);
-				t.set_bottom(sps.get(i).get_titleLocation()[3]);
-				t.set_height(sps.get(i).get_titleLocation()[3] - sps.get(i).get_titleLocation()[2]);
-				t.set_width(sps.get(i).get_titleLocation()[1] - sps.get(i).get_titleLocation()[0]);
-
-				boolean match = false;
-				for (int j = 0; j < tl2.size(); j++) {
-					if (t.isSameTitlePosition(tl2.get(j), _pageWidth, _pageHeight, false)) {
-						tl2.get(j).set_left(
-								(t.get_left() < tl2.get(j).get_left()) ? t.get_left() : tl2.get(j).get_left());
-						tl2.get(j).set_top((t.get_top() < tl2.get(j).get_top()) ? t.get_top() : tl2.get(j).get_top());
-						tl2.get(j).set_bottom(
-								(t.get_bottom() > tl2.get(j).get_bottom()) ? t.get_bottom() : tl2.get(j).get_bottom());
-						tl2.get(j).set_height(tl2.get(j).get_bottom() - tl2.get(j).get_top());
-						tl2.get(j).set_width((tl2.get(j).get_width() * tl2.get(j).get_count() + t.get_width())
-								/ (tl2.get(j).get_count() + 1));
-						tl2.get(j).set_count(tl2.get(j).get_count() + 1);
-						match = true;
-						break;
-					}
-				}
-				if (!match) {
-					tl2.add(t);
-					tl2.get(tl2.size() - 1).set_count(1);
-					tl2.get(tl2.size() - 1).set_type(0);
-				}
-			}
-		}
-		for (int i = tl2.size() - 1; i >= 0; i--) {
-			int divider = totalPage;
-			if (totalPage < 15)
-				divider = 3;
-			else if (totalPage < 25)
-				divider = 4;
-			else if (totalPage < 40)
-				divider = 5;
-			else if (totalPage < 60)
-				divider = 6;
-			else
-				divider = 7;
-
-			if (tl2.get(i).get_count() <= 2 || tl2.get(i).get_count() < totalPage / divider)
-				tl2.remove(i);
-		}
-		LoggerSingleton.info();
-		LoggerSingleton.info("Frequently Used Title Area: [top, height, alignment: axis | count]");
-		for (int i = 0; i < tl2.size(); i++) {
-			textLine t = tl2.get(i);
-			int[] pta = { t.get_top(), t.get_bottom() - t.get_top(), t.get_type(), t.get_left() };
-			this._potentialTitleArea.add(pta);
-			LoggerSingleton.info("[" + pta[0] + ", " + pta[1] + ", " + (pta[2] == 1 ? "Center: " : "Left: ") + pta[3]
-					+ " | " + t.get_count() + "]");
-		}
-		tl2.clear();
-
-		// Search for centered PTA
-		totalPage = sps.size();
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_PageNum() < 0) {
-				sps.remove(i);
-				totalPage--;
-				i--;
-				continue;
-			} else if (sps.get(i).get_title().length() < 1)
-				continue;
-			else {
-				if (sps.get(i).get_titleLocation().length != 4)
-					continue;
-				textLine t = new textLine();
-				t.set_left(sps.get(i).get_titleLocation()[0]);
-				t.set_top(sps.get(i).get_titleLocation()[2]);
-				t.set_bottom(sps.get(i).get_titleLocation()[3]);
-				t.set_height(sps.get(i).get_titleLocation()[3] - sps.get(i).get_titleLocation()[2]);
-				t.set_width(sps.get(i).get_titleLocation()[1] - sps.get(i).get_titleLocation()[0]);
-
-				boolean match = false;
-				for (int j = 0; j < tl2.size(); j++) {
-					if (t.isSameTitlePosition(tl2.get(j), _pageWidth, _pageHeight, true)) {
-						tl2.get(j).set_left(
-								(t.get_left() < tl2.get(j).get_left()) ? t.get_left() : tl2.get(j).get_left());
-						tl2.get(j).set_top((t.get_top() < tl2.get(j).get_top()) ? t.get_top() : tl2.get(j).get_top());
-						tl2.get(j).set_bottom(
-								(t.get_bottom() > tl2.get(j).get_bottom()) ? t.get_bottom() : tl2.get(j).get_bottom());
-						tl2.get(j).set_height(tl2.get(j).get_bottom() - tl2.get(j).get_top());
-						tl2.get(j).set_width(
-								(t.get_width() > tl2.get(j).get_width()) ? t.get_width() : tl2.get(j).get_width());
-						tl2.get(j).set_count(tl2.get(j).get_count() + 1);
-						match = true;
-						break;
-					}
-				}
-				if (!match) {
-					tl2.add(t);
-					tl2.get(tl2.size() - 1).set_count(1);
-					tl2.get(tl2.size() - 1).set_type(1);
-				}
-			}
-		}
-		for (int i = tl2.size() - 1; i >= 0; i--) {
-			int divider = totalPage;
-			if (totalPage < 15)
-				divider = 3;
-			else if (totalPage < 25)
-				divider = 4;
-			else if (totalPage < 40)
-				divider = 5;
-			else if (totalPage < 60)
-				divider = 6;
-			else
-				divider = 7;
-
-			if (tl2.get(i).get_count() <= 2 || tl2.get(i).get_count() < totalPage / divider)
-				tl2.remove(i);
-		}
-		for (int i = 0; i < tl2.size(); i++) {
-			textLine t = tl2.get(i);
-			int[] pta = { t.get_top(), t.get_bottom() - t.get_top(), t.get_type(), t.get_left() + t.get_width() / 2 };
-			this._potentialTitleArea.add(pta);
-			LoggerSingleton.info("[" + pta[0] + ", " + pta[1] + ", " + (pta[2] == 1 ? "Center: " : "Left: ") + pta[3]
-					+ " | " + t.get_count() + "]");
-		}
-		tl2.clear();
-
-		// Analyze hierarchical gap for adaptive procedure
-		totalPage = 0;
-		this._potentialHierarchicalGap.clear();
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_levelCoordinates().length != 3)
-				continue;
-			else if (sps.get(i).get_levelCoordinates()[0] < 0 || sps.get(i).get_levelCoordinates()[1] < 0)
-				continue;
-			else {
-				totalPage++;
-				int gap = sps.get(i).get_levelCoordinates()[1] - sps.get(i).get_levelCoordinates()[0];
-				// Here we use only 2 attributes of textLine, slideID to mark
-				// the gap, and the count.
-				textLine t = new textLine();
-				t.set_slideID(gap);
-
-				boolean match = false;
-				for (int j = 0; j < tl2.size(); j++) {
-					if (tl2.get(j).get_slideID() >= gap - 3 && tl2.get(j).get_slideID() <= gap + 3) {
-						tl2.get(j).set_count(tl2.get(j).get_count() + 1);
-						match = true;
-						break;
-					}
-				}
-				if (!match) {
-					tl2.add(t);
-					tl2.get(tl2.size() - 1).set_count(1);
-				}
-			}
-		}
-		for (int i = tl2.size() - 1; i >= 0; i--) {
-			int divider = totalPage;
-			if (totalPage < 25)
-				divider = 4;
-			else if (totalPage < 40)
-				divider = 5;
-			else if (totalPage < 60)
-				divider = 6;
-			else
-				divider = 7;
-
-			if (tl2.get(i).get_count() <= 3 || tl2.get(i).get_count() < totalPage / divider)
-				tl2.remove(i);
-		}
-		LoggerSingleton.info();
-		for (int i = 0; i < tl2.size(); i++) {
-			this._potentialHierarchicalGap.add(tl2.get(i).get_slideID());
-			LoggerSingleton.info("Potential Gap: " + tl2.get(i).get_slideID() + '\t' + tl2.get(i).get_count());
-		}
-		tl2.clear();
-
-		/* show result */
-		LoggerSingleton.info();
-		LoggerSingleton.info("< RESULT after step 3 (video stream)>");
-		LoggerSingleton.info();
-		// int count = 0;
-
-		for (int i = 0; i < sps.size(); i++) {
-			slidePage sp = sps.get(i);
-
-			LoggerSingleton.info(String.format("%d %s  %s [%d, %d, %d, %d]", sp.get_PageNum(),
-					sp.get_startTime().toString(), sp.get_title(), sp.get_titleLocation()[0], sp.get_titleLocation()[2],
-					(sp.get_titleLocation()[1] - sp.get_titleLocation()[0]),
-					(sp.get_titleLocation()[3] - sp.get_titleLocation()[2])));
-
-			/* show result */
-			for (int j = 0; j < sp.get_texts().size(); j++) {
-				textOutline to = sp.get_texts().get(j);
-				String indent = "";
-				if (to.get_hierarchy() == 1)
-					indent = "--";
-				else if (to.get_hierarchy() == 2)
-					indent = "----";
-				else if (to.get_hierarchy() == 3)
-					indent = "------";
-				LoggerSingleton.info(indent + to.get_text());
-
-			}
-
-			LoggerSingleton.info("PageType: " + sp.get_pageType());
-			if (sp.get_pageType() >= 0)
-				LoggerSingleton.info("3 Levels: " + sp.get_levelCoordinates()[0] + ", " + sp.get_levelCoordinates()[1]
-						+ ", " + sp.get_levelCoordinates()[2]);
-			LoggerSingleton.info();
-
-			// count += sp.get_texts().size();
-			// if(sp.get_title().length() > 0)
-			// count++;
-		}
-		LoggerSingleton.info("-------------------------------------------------------");
-
-		/* Generate slidePage structure from textLine, separated by slideID */
-		ArrayList<slidePage> sps_pptx = new ArrayList<slidePage>();
-		pptParser pp = new pptParser();
-		sps_pptx = pp.analyzePPTX(pptxName);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< RESULT after step 3 (PPTX file)>");
-		LoggerSingleton.info();
-
-		for (int i = 0; i < sps_pptx.size(); i++) {
-			slidePage sp = sps_pptx.get(i);
-
-			LoggerSingleton.info(String.format("%d %s  %s [%d, %d, %d, %d]", sp.get_PageNum(),
-					sp.get_startTime().toString(), sp.get_title(), sp.get_titleLocation()[0], sp.get_titleLocation()[2],
-					(sp.get_titleLocation()[1] - sp.get_titleLocation()[0]),
-					(sp.get_titleLocation()[3] - sp.get_titleLocation()[2])));
-
-			for (int j = 0; j < sp.get_texts().size(); j++) {
-				textOutline to = sp.get_texts().get(j);
-				String indent = "";
-				if (to.get_hierarchy() == 1)
-					indent = "--";
-				else if (to.get_hierarchy() == 2)
-					indent = "----";
-				else if (to.get_hierarchy() == 3)
-					indent = "------";
-				LoggerSingleton.info(indent + to.get_text());
-
-			}
-
-			LoggerSingleton.info("PageType: " + sp.get_pageType());
-			if (sp.get_pageType() >= 0)
-				LoggerSingleton.info("3 Levels: " + sp.get_levelCoordinates()[0] + ", " + sp.get_levelCoordinates()[1]
-						+ ", " + sp.get_levelCoordinates()[2]);
-			LoggerSingleton.info();
-
-			// count += sp.get_texts().size();
-			// if(sp.get_title().length() > 0)
-			// count++;
-		}
-		LoggerSingleton.info("-------------------------------------------------------");
-
-		/*
-		 * LoggerSingleton.info("Original Slides:\t" + sps.size());
-		 * LoggerSingleton.info("Modified text-lines:\t" + count);
-		 * LoggerSingleton.info("$$$$");
-		 */
-
-		sps = synchronizeVideoToFile(sps, sps_pptx);
-		// sps = synchronizeVideoAndFile(sps, sps_pptx);
-		// sps_pptx.clear();
-		/* show result */
-		LoggerSingleton.info();
-		LoggerSingleton.info("< RESULT after step 3.5: synchronization >");
-		LoggerSingleton.info();
-
-		File newFile = new File(Constants.joinPath(this.get_workingDir(), this.get_lectureID(), "sync"));
-		if (newFile.exists()) {
-			newFile.delete();
-		} /**/
-
-		for (int i = 0; i < sps.size(); i++) {
-			slidePage sp = sps.get(i);
-
-			LoggerSingleton.info(String.format("%d %s  %s [%d, %d, %d, %d]", sp.get_PageNum(),
-					sp.get_startTime().toString(), sp.get_title(), sp.get_titleLocation()[0], sp.get_titleLocation()[2],
-					(sp.get_titleLocation()[1] - sp.get_titleLocation()[0]),
-					(sp.get_titleLocation()[3] - sp.get_titleLocation()[2])));
-
-			BufferedWriter output = new BufferedWriter(new FileWriter(newFile, true));
-			output.append(sp.get_PageNum() + "\t" + sp.get_startTime().toString());
-			output.newLine();
-			output.close();
-
-			/* show result */
-			for (int j = 0; j < sp.get_texts().size(); j++) {
-				textOutline to = sp.get_texts().get(j);
-				String indent = "";
-				if (to.get_hierarchy() == 1)
-					indent = "--";
-				else if (to.get_hierarchy() == 2)
-					indent = "----";
-				else if (to.get_hierarchy() == 3)
-					indent = "------";
-				LoggerSingleton.info(indent + to.get_text());
-
-			}
-
-			LoggerSingleton.info("PageType: " + sp.get_pageType());
-			if (sp.get_pageType() >= 0)
-				LoggerSingleton.info("3 Levels: " + sp.get_levelCoordinates()[0] + ", " + sp.get_levelCoordinates()[1]
-						+ ", " + sp.get_levelCoordinates()[2]);
-			LoggerSingleton.info();
-
-			// count += sp.get_texts().size();
-			// if(sp.get_title().length() > 0)
-			// count++;
-		}
-		LoggerSingleton.info("-------------------------------------------------------");
-
-		ArrayList<ArrayList<Integer>> samePageGroups = new ArrayList<ArrayList<Integer>>();
-		samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 4: Remove repeated and empty pages >");
-		ArrayList<String> groups = new ArrayList<>();
-		for (ArrayList<Integer> group : samePageGroups)
-			groups.add(Joiner.on(" ").join(group));
-
-		LoggerSingleton.info(String.format("Same Page Group (%s)\n", Joiner.on("\n").join(groups)));
-
-		sps = removeRepeatedPages(sps, samePageGroups);
-
-		samePageGroups.clear();
-		samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 5: Remove live show >");
-
-		groups.clear();
-		for (ArrayList<Integer> group : samePageGroups)
-			groups.add(Joiner.on(" ").join(group));
-
-		LoggerSingleton.info(String.format("Same Page Group (%s)\n", Joiner.on("\n").join(groups)));
-
-		sps = removeLiveShow(sps, samePageGroups);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 6: Combine continuous slides >");
-
-		sps = combineContinuedSlides(sps, 0, sps.size() - 1);
-
-		/* show result */
-		LoggerSingleton.info();
-		LoggerSingleton.info("< RESULT after step 6 >");
-		LoggerSingleton.info();
-		for (int i = 0; i < sps.size(); i++) {
-			slidePage sp = sps.get(i);
-			LoggerSingleton.info(sp.get_PageNum() + "  " + sp.get_title());
-
-			for (int j = 0; j < sp.get_texts().size(); j++) {
-				textOutline to = sp.get_texts().get(j);
-				String indent = "";
-				if (to.get_hierarchy() == 1)
-					indent = "--";
-				else if (to.get_hierarchy() == 2)
-					indent = "----";
-				else if (to.get_hierarchy() == 3)
-					indent = "------";
-				LoggerSingleton.info(indent + to.get_text());
-			}
-
-			LoggerSingleton.info("PageType: " + sp.get_pageType());
-			LoggerSingleton.info();
-		}
-		LoggerSingleton.info("-------------------------------------------------------");
-
-		samePageGroups.clear();
-		samePageGroups = findSamePages(sps);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 7: Find tag page >");
-		groups.clear();
-		for (ArrayList<Integer> group : samePageGroups)
-			groups.add(Joiner.on(" ").join(group));
-
-		LoggerSingleton.info(String.format("Same Page Group (%s)\n", Joiner.on("\n").join(groups)));
-
-		sps = dealWithTagPage(sps, samePageGroups);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 8: Find split page and make them as visual tag page>");
-
-		boolean isTag = false;
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_pageType() == 2) {
-				isTag = true;
-				break;
-			}
-		}
-
-		if (!isTag)
-			sps = dealWithSplitPage(sps);
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 9: Find section pages and make a visual tag page for them>");
-
-		isTag = false;
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_pageType() == 2) {
-				isTag = true;
-				break;
-			}
-		}
-
-		if (!isTag)
-			sps = dealWithSectionPage(sps);
-
-		// Now, delete all unorganized texts and pages without title
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_title().length() < 1) {
-				if (sps.get(i).get_pageType() < 0) {
-					sps.remove(i);
-					i--;
-					continue;
-				} else if (sps.get(i).get_texts().get(0).get_hierarchy() == 1) {
-					sps.get(i).set_title(sps.get(i).get_texts().get(0).get_text());
-					sps.get(i).get_texts().remove(0);
-				} else {
-					sps.remove(i);
-					i--;
-					continue;
-				}
-			}
-			for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
-				if (sps.get(i).get_texts().get(j).get_hierarchy() == 0) {
-					sps.get(i).get_texts().remove(j);
-					j--;
-				}
-			}
-		}
-
-		isTag = false;
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_pageType() == 2) {
-				isTag = true;
-				break;
-			}
-		}
-
-		if (!isTag)
-			sps = combineContinuedSlides(sps, 0, sps.size() - 1);
-		else {
-			int tagPos = 0;
-			for (int i = 0; i < sps.size(); i++) {
-				if (sps.get(i).get_pageType() == 2) {
-					tagPos = i;
-					break;
-				}
-			}
-			sps = combineContinuedSlides(sps, 0, tagPos - 1);
-		}
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 10: Search index page >");
-		LoggerSingleton.info();
-
-		if (!isTag)
-			sps = findIndexPage(sps, 0, sps.size() - 1);
-		else {
-			for (int i = 0; i < sps.size(); i++) {
-				if (sps.get(i).get_pageType() == 2) {
-					sps = findIndexPage(sps, 0, i - 1);
-					for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
-						textOutline currentTo = sps.get(i).get_texts().get(j);
-						int beginPos = i, endPos = i;
-						for (int k = i + 1; k < sps.size(); k++) {
-							if (sps.get(k).get_PageNum() >= currentTo.get_child()) {
-								beginPos = k;
-								break;
-							}
-						}
-
-						for (int k = beginPos; k < sps.size(); k++) {
-							if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
-								endPos = k;
-								break;
-							}
-						}
-						sps = findIndexPage(sps, beginPos, endPos);
-					}
-				}
-			}
-		}
-
-		LoggerSingleton.info();
-		LoggerSingleton.info("< STEP 11: Conclude a visual index page for pages with similar titles >");
-		LoggerSingleton.info();
-
-		int beginPos = 1;
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_pageType() <= 0)
-				continue;
-			else if (sps.get(i).get_pageType() == 1) {
-				int currentSlideNum = sps.get(i).get_PageNum();
-				if (beginPos < i - 1)
-					sps = concludeTheme(sps, beginPos, i - 1, 3);
-
-				for (int j = i; j < sps.size(); j++) {
-					if (sps.get(j).get_PageNum() >= currentSlideNum) {
-						i = j;
-						break;
-					}
-				}
-				currentSlideNum = sps.get(i).get_texts().get(sps.get(i).get_texts().size() - 1).get_childEnd();
-				for (int j = i; j < sps.size(); j++) {
-					if (sps.get(j).get_PageNum() >= currentSlideNum) {
-						i = j;
-						beginPos = j + 1;
-
-						break;
-					}
-				}
-
-			} else if (sps.get(i).get_pageType() == 2) {
-				sps = concludeTheme(sps, beginPos, i - 1, 3);
-				isTag = true;
-				break;
-			}
-		}
-		if (!isTag && beginPos < sps.size() - 1)
-			sps = concludeTheme(sps, beginPos, sps.size() - 2, 3);
-
-		// Add time info to each text
-		for (int i = 0; i < sps.size(); i++) {
-			if (sps.get(i).get_pageType() <= 0) {
-				for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
-					textOutline to = sps.get(i).get_texts().get(j);
-					if (to.get_time().before(sps.get(i).get_startTime()))
-						to.set_time(sps.get(i).get_startTime());
-				}
-			} else if (sps.get(i).get_pageType() <= 2) {
-				for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
-					textOutline to = sps.get(i).get_texts().get(j);
-					for (int k = i + 1; k < sps.size(); k++) {
-						if (to.get_child() == sps.get(k).get_PageNum()
-								&& to.get_time().before(sps.get(i).get_startTime()))
-							to.set_time(sps.get(k).get_startTime());
-					}
-				}
-			}
-		}
-
-		/* show result */
-		LoggerSingleton.info();
-		LoggerSingleton.info("< RESULT after step 10 >");
-		LoggerSingleton.info();
-		for (int i = 0; i < sps.size(); i++) {
-			slidePage sp = sps.get(i);
-			LoggerSingleton.info(sp.get_PageNum() + "  " + sp.get_startTime() + "  " + sp.get_title());
-
-			for (int j = 0; j < sp.get_texts().size(); j++) {
-				textOutline to = sp.get_texts().get(j);
-				String indent = "";
-				if (to.get_hierarchy() == 1)
-					indent = "--";
-				else if (to.get_hierarchy() == 2)
-					indent = "----";
-				else if (to.get_hierarchy() == 3)
-					indent = "------";
-				LoggerSingleton.info(indent + to.get_text() + " -> ( " + to.get_child() + ", " + to.get_childEnd()
-						+ " ) " + to.get_time());
-			}
-
-			LoggerSingleton.info("PageType: " + sp.get_pageType());
-			LoggerSingleton.info();
-		}
-		LoggerSingleton.info("-------------------------------------------------------");
-
-		// LoggerSingleton.info("$$$$\tFinal Slides:\t" + sps.size());
-
-		ArrayList<textOutline> finalResults = new ArrayList<textOutline>();
-		finalResults = makeFinalTextOutlinesFromSlidePages(sps);
-
-		this.set_isInitial(false);
-		return finalResults;
+	private ArrayList<slidePage> notNullPages(ArrayList<slidePage> list){
+		ArrayList<slidePage> result = new ArrayList<>();
+		for(slidePage page : list) if(page != null) result.add(page);
+		
+		return result;
 	}
+	
 
-	public ArrayList<textLine> removeLogo(ArrayList<textLine> tll) {
-		int totalPage = tll.get(tll.size() - 1).get_slideID();
+	private ArrayList<textLine> removeLogo(ArrayList<textLine> inputLines) {
+		int totalPage = inputLines.get(inputLines.size() - 1).get_slideID();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-		for (int i = 0; i < tll.size(); i++) {
-			textLine t = tll.get(i);
+		for (textLine line: inputLines) {
 			boolean match = false;
-			for (int j = 0; j < tl2.size(); j++) {
-				if (t.isSame(tl2.get(j), _pageWidth, _pageHeight)) {
-					tl2.get(j).set_count(tl2.get(j).get_count() + 1);
+			for (textLine other: tl2)
+				if (line.isSame(other, pageWidth, pageHeight)) {
+					other.set_count(other.get_count() + 1);
 					match = true;
 					break;
 				}
-			}
 			if (!match) {
-				tl2.add(t);
-				tl2.get(tl2.size() - 1).set_count(1);
+				line.set_count(1);
+				tl2.add(line);
 			}
 		}
 
-		for (int i = tl2.size() - 1; i >= 0; i--) {
-			int divider = totalPage;
-			if (totalPage < 15)
-				divider = 2;
-			else if (totalPage < 25)
-				divider = 3;
-			else if (totalPage < 40)
-				divider = 4;
-			else if (totalPage < 60)
-				divider = 5;
-			else
-				divider = 6;
+		int divider = 0;
+		if (totalPage < 15)
+			divider = 2;
+		else if (totalPage < 25)
+			divider = 3;
+		else if (totalPage < 40)
+			divider = 4;
+		else if (totalPage < 60)
+			divider = 5;
+		else
+			divider = 6;
 
-			if (tl2.get(i).get_count() <= 2 || tl2.get(i).get_count() < totalPage / divider) {
-				tl2.remove(i);
-				continue;
-			}
+		ArrayList<textLine> old_tl2 = new ArrayList<>(tl2);
+		tl2.clear();
+		for (textLine line : old_tl2) {
+			if (line.get_count() <= 2 || line.get_count() < totalPage / divider) continue;
+			if (!this.initial) {
+				boolean foundSameTitlePosition = false;
+				for (int[] pta: potentialTitleArea) {
+					if (pta.length != 4) continue;
+					boolean centered = pta[2] != 0;
 
-			if (!this._isInitial) {
-				for (int j = 0; j < this.get_potentialTitleArea().size(); j++) {
-					int[] pta = this.get_potentialTitleArea().get(j);
-					if (pta.length != 4)
-						continue;
 					textLine t = new textLine();
+					
 					t.set_top(pta[0]);
 					t.set_height(pta[1]);
 					t.set_bottom(pta[0] + pta[1]);
 					t.set_type(pta[2]);
-					boolean centered = false;
-					if (pta[2] == 0) {
-						t.set_left(pta[3]);
-						t.set_width(this._pageWidth / 3);
-						centered = false;
-					} else {
-						t.set_left(pta[3] / 2);
-						t.set_width(pta[3]);
-						centered = true;
-					}
-					if (tl2.get(i).isSameTitlePosition(t, this._pageWidth, this._pageHeight, centered)) {
-						tl2.remove(i);
+					t.set_left(centered ? pta[3] / 2 : pta[3]);
+					t.set_width(centered ? pta[3] : pageWidth / 3);
+					
+					if (line.isSameTitlePosition(t, pageWidth, pageHeight, centered)){
+						foundSameTitlePosition = true;
 						break;
 					}
 				}
+				if(foundSameTitlePosition) 
+					tl2.add(line);
 			} else {
-				double hp = this._pageHeight / 768;
-				// double wp = this._pageWidth/1024;
-				if (tl2.get(i).get_bottom() < 256 * hp) {
-					int rightPart = tl2.get(i).get_left() + tl2.get(i).get_width() - this._pageWidth / 2;
-					int leftPart = this._pageWidth / 2 - tl2.get(i).get_left();
-					if (rightPart > 0 && leftPart > 0 && Math.abs(leftPart - rightPart) < tl2.get(i).get_width() / 4)
-						tl2.remove(i);
+				double hp = pageHeight / Constants.DEFAULT_HEIGHT;
+				if (line.get_bottom() < 256 * hp) {
+					int rightPart = line.get_left() + line.get_width() - pageWidth / 2;
+					int leftPart = pageWidth / 2 - line.get_left();
+					if (rightPart > 0 && leftPart > 0 && Math.abs(leftPart - rightPart) < line.get_width() / 4)
+						continue;
 				}
-			}
+				tl2.add(line);
+			}	
 		}
 
-		for (int i = 0; i < tl2.size(); i++) {
-			textLine t = tl2.get(i);
-			LoggerSingleton.info(Joiner.on(" ").join(new Object[] { t.get_count(), t.get_text(), t.get_top(),
-					t.get_left(), t.get_width(), t.get_height() }));
-		}
-
-		for (int i = tll.size() - 1; i >= 0; i--) {
-			for (int j = 0; j < tl2.size(); j++) {
-				// Here 'isInitial' equals to 'isStrict' in value only...
-				if (tl2.get(j).isSamePosition(tll.get(i), _pageWidth, _pageHeight, this._isInitial)) {
-					tll.remove(i);
+		LoggerSingleton.info("Filtered text lines: ");
+		for (textLine t: tl2)
+			LoggerSingleton.info(  
+					Joiner.on(" ").join(new Object[] { 
+							t.get_count(), t.get_text(), t.get_top(),
+							t.get_left(), t.get_width(), t.get_height()}));
+		
+		ArrayList<textLine> result = new ArrayList<>(inputLines);
+		for (textLine inputLine: Lists.reverse(inputLines))
+			for (textLine filteredLine: tl2)
+				if (filteredLine.isSamePosition(inputLine, pageWidth, pageHeight, initial)) {
+					result.remove(inputLine);
 					break;
 				}
-			}
-		}
-
-		tl2.clear();
-
-		return tll;
+		return result;
 	}
 
-	public ArrayList<ArrayList<Integer>> findSamePages(ArrayList<slidePage> sps) {
-		/*
-		 * In this function, totally empty slides will be deleted and similar
-		 * slides will be find out and saved in group, to be further dealt with.
-		 * Finally bubble-reorder each of the similar slide groups.
-		 */
+	// old methods bellow
+	/**
+	 * In this function, totally empty slides will be deleted and similar
+	 * slides will be found out and saved in group, to be further dealt with.
+	 * Finally bubble-reorder each of the similar slide groups.
+	 */
+	private ArrayList<ArrayList<Integer>> findSamePages(ArrayList<slidePage> sps) {
 
 		ArrayList<ArrayList<Integer>> samePageGroups = new ArrayList<ArrayList<Integer>>();
-
-		for (int i = 0; i < sps.size(); i++) {
-			// Remove empty slides
-			slidePage sp = sps.get(i);
-			if (sp.get_pageType() <= -3) {
-				sps.remove(i);
-				i--;
-				continue;
-			}
-
-			/*
-			 * Search for similar slides, when founded.... If both slides have
-			 * already been in a group, skip it. If only 1 slides exists in a
+		ArrayList<slidePage> old_sps = new ArrayList<>(sps);
+		sps.clear();
+		for (slidePage page: old_sps){
+			if (page.get_pageType() <= -3) continue;
+			sps.add(page);
+			/**
+			 * Search for similar slides, when found.... If both slides already have
+			 * been in a group, skip it. If only 1 slides exists in a
 			 * group, add the 2nd slide in. If both slides haven't in a group,
 			 * create a new group for them.
 			 */
-			for (int j = i + 1; j < sps.size(); j++) {
-				slidePage sp2 = sps.get(j);
-				if (sp2.get_pageType() <= -3)
-					continue;
-				if (sp.isSamePage(sp2)) {
-					boolean done = false;
-					for (int k = 0; k < samePageGroups.size(); k++) {
-						for (int l = 0; l < samePageGroups.get(k).size(); l++) {
-							if (sp.get_PageNum() == samePageGroups.get(k).get(l)) {
-								for (int m = 0; m < samePageGroups.get(k).size(); m++) {
-									if (sp2.get_PageNum() == samePageGroups.get(k).get(m)) {
-										done = true;
-										break;
-									}
-								}
-								if (!done) {
-									samePageGroups.get(k).add(sp2.get_PageNum());
+			for(slidePage page2: old_sps.subList(old_sps.indexOf(page) + 1, old_sps.size())){
+				if (page2.get_pageType() <= -3 || !page.isSamePage(page2)) continue;
+
+				boolean done = false;
+				for(ArrayList<Integer> pageGroup: samePageGroups){
+					for (int firstPageNum: pageGroup)
+						if (page.get_PageNum() == firstPageNum) {
+							for (int secondPageNum: pageGroup)
+								if (page2.get_PageNum() == secondPageNum) {
 									done = true;
 									break;
 								}
+							if (!done) {
+								pageGroup.add(page2.get_PageNum());
+								done = true;
+								break;
 							}
 						}
-						if (done)
-							break;
-					}
-					if (!done) {
-						ArrayList<Integer> newGroup = new ArrayList<Integer>();
-						newGroup.add(sp.get_PageNum());
-						newGroup.add(sp2.get_PageNum());
-						samePageGroups.add(newGroup);
-					}
+					if (done)
+						break;
 				}
+				if (!done)
+					samePageGroups.add(Lists.newArrayList(page.get_PageNum(), page2.get_PageNum()));
 			}
 		}
-
-		for (int i = 0; i < samePageGroups.size(); i++) {
-			for (int j = 0; j < samePageGroups.get(i).size(); j++) {
-				for (int k = j + 1; k < samePageGroups.get(i).size(); k++) {
-					int xj = samePageGroups.get(i).get(j);
-					int xk = samePageGroups.get(i).get(k);
-
-					if (xj > xk) {
-						samePageGroups.get(i).set(j, xk);
-						samePageGroups.get(i).set(k, xj);
-					}
+		
+		for(ArrayList<Integer> pageGroup: samePageGroups)
+			pageGroup.sort(new Comparator<Integer>() {
+				@Override
+				public int compare(Integer first, Integer second) {
+					return first.compareTo(second);
 				}
-			}
-		}
-
+			});
 		return samePageGroups;
 
 	}
 
-	public ArrayList<slidePage> removeRepeatedPages(ArrayList<slidePage> sps,
+	
+	private ArrayList<slidePage> removeRepeatedPages(ArrayList<slidePage> sps,
 			ArrayList<ArrayList<Integer>> samePageGroups) {
 		/*
 		 * Remove those 'logically' repeated slides from the slides series such
@@ -1434,70 +668,66 @@ public class outlineGenerator {
 		 */
 
 		LoggerSingleton.info("Pages removed:");
-		String info = "";
-		for (int i = 0; i < sps.size() - 1; i++) {
-			if (isInSamePageGroup(sps.get(i).get_PageNum(), sps.get(i + 1).get_PageNum(), samePageGroups)) {
-				info += sps.get(i + 1).get_PageNum() + ", ";
-				Time time = sps.get(i).get_startTime();
-				sps.set(i, combineSameSlides(sps.get(i), sps.get(i + 1), true));
-				sps.remove(i + 1);
-				sps.get(i).set_startTime(time);
-				i--;
+		String info = ""; 
+		for(slidePage page: sps.subList(0, sps.size() - 1)){
+			slidePage nextPage = sps.get(sps.indexOf(page) + 1);
+			if (isInSamePageGroup(page.get_PageNum(), nextPage.get_PageNum(), samePageGroups)) {
+				info += page.get_PageNum() + ", ";
+				Time time = page.get_startTime();
+				sps.set(sps.indexOf(page), combineSameSlides(page, nextPage, true));
+				sps.set(sps.indexOf(nextPage), null);
+				page.set_startTime(time);
 				continue;
 			}
 
-			if (i > 1
-					&& isInSamePageGroup(sps.get(i - 1).get_PageNum(), sps.get(i + 1).get_PageNum(), samePageGroups)) {
-				info += sps.get(i + 1).get_PageNum() + ", ";
-				Time time = sps.get(i - 1).get_startTime();
-				sps.set(i - 1, combineSameSlides(sps.get(i - 1), sps.get(i + 1), true));
-				sps.remove(i + 1);
-				sps.get(i - 1).set_startTime(time);
+			slidePage previousPage = sps.indexOf(page) > 1 ? sps.get(sps.indexOf(page) - 1) : null;
+			if (previousPage != null && isInSamePageGroup(previousPage.get_PageNum(), nextPage.get_PageNum(), samePageGroups)) {
+				info += nextPage.get_PageNum() + ", ";
+				Time time = previousPage.get_startTime();
+				sps.set(sps.indexOf(previousPage), combineSameSlides(previousPage, nextPage, true));
+				sps.set(sps.indexOf(nextPage), null);
+				previousPage.set_startTime(time);
 
-				for (int j = i + 2; j < sps.size(); j++) {
-					if (isInSamePageGroup(sps.get(i).get_PageNum(), sps.get(j).get_PageNum(), samePageGroups)) {
-						info += sps.get(i).get_PageNum() + ", ";
-						time = sps.get(j).get_startTime();
-						sps.set(j, combineSameSlides(sps.get(i), sps.get(j), false));
-						sps.remove(i);
-						sps.get(j).set_startTime(time);
+				for (slidePage futurePage: sps.subList(sps.indexOf(page) + 2, sps.size()))
+					if (isInSamePageGroup(page.get_PageNum(), futurePage.get_PageNum(), samePageGroups)) {
+						info += page.get_PageNum() + ", ";
+						time = futurePage.get_startTime();
+						sps.set(sps.indexOf(futurePage), combineSameSlides(page, futurePage, false));
+						sps.set(sps.indexOf(page), null);
+						futurePage.set_startTime(time);
 						break;
 					}
-				}
-
-				i = i - 2;
 				continue;
 			}
 		}
 		LoggerSingleton.info(info);
-		LoggerSingleton.info();
 
-		return sps;
+		return notNullPages(sps);
 	}
+	
 
-	public ArrayList<slidePage> removeLiveShow(ArrayList<slidePage> sps, ArrayList<ArrayList<Integer>> samePageGroups) {
-		/*
-		 * In this function, if a group of continuous pages existing between two
-		 * same slides are mainly ill-organized pages or empty pages, they would
-		 * be treated as LiveShow and deleted from the data structure.
-		 *
-		 * Re-order the same page pairs first, treat the shorter pairs first.
-		 */
+	/**
+	 * In this function, if a group of continuous pages existing between two
+	 * same slides are mainly ill-organized pages or empty pages, they would
+	 * be treated as LiveShow and deleted from the data structure.
+	 *
+	 * Re-order the same page pairs first, treat the shorter pairs first.
+	 */
+	private ArrayList<slidePage> removeLiveShow(ArrayList<slidePage> sps, ArrayList<ArrayList<Integer>> samePageGroups) {
 
 		ArrayList<int[]> pairs = new ArrayList<int[]>();
-		for (int i = 0; i < samePageGroups.size(); i++) {
-			for (int j = 0; j < samePageGroups.get(i).size() - 1; j++) {
-				int pair[] = { -1, -1, 0 };
-				pair[0] = samePageGroups.get(i).get(j);
-				pair[1] = samePageGroups.get(i).get(j + 1);
+		for (ArrayList<Integer> pageGroup: samePageGroups ){
+			for(Integer curValue: pageGroup.subList(0, pageGroup.size() - 1)){
+				Integer nextValue = pageGroup.get(pageGroup.indexOf(curValue) + 1);
+				int pair[] = { curValue, nextValue, 0 };
 
 				int beginPagePos = -1;
 				int endPagePos = -1;
-				for (int k = 0; k < sps.size(); k++) {
-					if (sps.get(k).get_PageNum() == pair[0])
-						beginPagePos = k;
-					else if (sps.get(k).get_PageNum() == pair[1]) {
-						endPagePos = k;
+				for(slidePage page: sps){
+					if (page.get_PageNum() == pair[0])
+						beginPagePos = sps.indexOf(page);
+					else if (page.get_PageNum() == pair[1]) {
+						endPagePos = sps.indexOf(page);
 						break;
 					}
 				}
@@ -1505,110 +735,115 @@ public class outlineGenerator {
 				pairs.add(pair);
 			}
 		}
-
-		for (int i = 0; i < pairs.size(); i++) {
-			for (int j = i + 1; j < pairs.size(); j++) {
-				if (pairs.get(j)[2] < pairs.get(i)[2]) {
-					int temp[] = { 0, 0, 0 };
-					temp = pairs.get(i);
-					pairs.set(i, pairs.get(j));
-					pairs.set(j, temp);
-				}
+		
+		pairs.sort(new Comparator<int[]>() {
+			@Override
+			public int compare(int[] first, int[] second) {
+				return new Integer(first[2]).compareTo(second[2]);
 			}
-		}
+		});
+		
 
-		for (int i = 0; i < pairs.size(); i++)
-			LoggerSingleton.info("Pair: <" + pairs.get(i)[0] + ", " + pairs.get(i)[1] + "> " + pairs.get(i)[2]);
+		for (int[] pair: pairs)
+			LoggerSingleton.info("Pair: <" + pair[0] + ", " + pair[1] + "> " + pair[2]);
 
-		for (int i = 0; i < pairs.size(); i++) {
-			int beginPageNum = pairs.get(i)[0];
-			int endPageNum = pairs.get(i)[1];
+		for (int[] pair: pairs){
+			int beginPageNum = pair[0];
+			int endPageNum = pair[1];
 			int beginPagePos = -1;
 			int endPagePos = -1;
-			for (int k = 0; k < sps.size(); k++) {
-				if (sps.get(k).get_PageNum() == beginPageNum) {
-					beginPagePos = k;
+			for (slidePage page: sps) {
+				if (page.get_PageNum() == beginPageNum)
+					beginPagePos = sps.indexOf(page);
 					break;
 				}
-			}
+			
 			if (beginPagePos < 0)
 				continue;
 
 			double ave = 0;
 			int flashPageCount = 0;
-			for (int k = beginPagePos + 1; k < sps.size(); k++) {
-				if (sps.get(k).get_PageNum() == endPageNum) {
-					if (sps.get(k).get_startTime().getTime() - sps.get(k - 1).get_startTime().getTime() < 5001)
+			for (slidePage page: sps.subList(beginPagePos + 1, sps.size())){
+				if (page == null) continue;
+				int pageIdx = sps.indexOf(page);
+				slidePage previousPage = sps.get(pageIdx - 1), nextPage = sps.get(pageIdx + 1);
+				if (page.get_PageNum() == endPageNum) {
+					if (page.get_startTime().getTime() - previousPage.get_startTime().getTime() < 5001)
 						flashPageCount++;
-					endPagePos = k;
+					endPagePos = pageIdx;
 					break;
 				}
 
-				if (sps.get(k).get_pageType() == -1) {
+				if (page.get_pageType() == -1) {
 					int totalLength = 0;
-					for (int x = 0; x < sps.get(k).get_texts().size(); x++)
-						totalLength += sps.get(k).get_texts().get(x).get_text().length();
-					if (sps.get(k).get_texts().size() >= 6 || totalLength >= 100) {
+					for(textOutline outline: page.get_texts())
+						totalLength += outline.get_text().length();
+					if (page.get_texts().size() >= 6 || totalLength >= 100) {
 						ave += 0.5;
 						if (totalLength >= 200)
 							ave += 0.5;
 					} else
 						ave += 1;
 				} else
-					ave -= sps.get(k).get_pageType();
+					ave -= page.get_pageType();
 
-				if (sps.get(k + 1).get_startTime().getTime() - sps.get(k).get_startTime().getTime() < 5001)
+				if (nextPage.get_startTime().getTime() - page.get_startTime().getTime() < 5001)
 					flashPageCount++;
 			}
 			if (endPagePos < 0)
 				continue;
 
-			if (endPagePos - beginPagePos == 1) {
-				Time time = sps.get(beginPagePos).get_startTime();
-				sps.set(beginPagePos, combineSameSlides(sps.get(beginPagePos), sps.get(endPagePos), true));
-				sps.remove(endPagePos);
+			slidePage beginPage = sps.get(beginPagePos), endPage = sps.get(endPagePos);
+			int posDiff = endPagePos - beginPagePos; 
+			if (posDiff == 1) {
+				Time time = beginPage.get_startTime();
+				sps.set(beginPagePos, combineSameSlides(beginPage, endPage, true));
 				sps.get(beginPagePos).set_startTime(time);
+				sps.set(endPagePos, null);
 			} else {
-				ave = ave / (double) (endPagePos - beginPagePos - 1);
-				long avt = (sps.get(endPagePos).get_startTime().getTime()
-						- sps.get(beginPagePos).get_startTime().getTime()) / (endPageNum - beginPageNum);
-				boolean delete = ave >= 0.5 && (avt < 15001 || flashPageCount * 2 >= (endPagePos - beginPagePos - 1))
-						&& sps.get(beginPagePos).get_pageType() == sps.get(endPagePos).get_pageType();
+				ave = ave / (double) (posDiff - 1);
+				long avt = (endPage.get_startTime().getTime() - beginPage.get_startTime().getTime()) / posDiff;
+				boolean delete = ave >= 0.5 && (avt < 15001 || flashPageCount * 2 >= (posDiff - 1))
+						&& beginPage.get_pageType() == endPage.get_pageType();
+				
 				LoggerSingleton.info("Potential Live Show: " + "( " + beginPageNum + ", " + endPageNum + " ) AveType-"
 						+ ave + " AveDuration-" + avt / 1000 + " FlashPageCount" + flashPageCount + " "
 						+ (delete ? "Yes" : "No"));
 				if (delete) {
-					Time time = sps.get(beginPagePos).get_startTime();
-					sps.set(beginPagePos, combineSameSlides(sps.get(beginPagePos), sps.get(endPagePos), true));
-					sps.remove(endPagePos);
+					Time time = beginPage.get_startTime();
+					sps.set(beginPagePos, combineSameSlides(beginPage, endPage, true));
 					sps.get(beginPagePos).set_startTime(time);
-					for (int k = endPagePos - 1; k > beginPagePos; k--)
-						sps.remove(k);
+					for (int k = endPagePos; k > beginPagePos; k--)
+						sps.set(k, null);
 				}
 			}
 		}
 
-		return sps;
+		return notNullPages(sps);
 	}
+	
 
-	public ArrayList<slidePage> combineContinuedSlides(ArrayList<slidePage> sps, int beginPos, int endPos) {
-		/*
-		 * In this function, several continuous slides with a same topic will be
-		 * gathered together as a single, large slide. And the title of the new
-		 * slide will use the best recognized one from all the old slides
-		 * included, and delete the potential number such as (1) or (2/3).
-		 */
+	/**
+	 * In this function, several continuous slides with a same topic will be
+	 * gathered together as a single, large slide. And the title of the new
+	 * slide will use the best recognized one from all the old slides
+	 * included, and delete the potential number such as (1) or (2/3).
+	 */
+	public ArrayList<slidePage> combineContinuedSlides(ArrayList<slidePage> sps, int start, int end) {
 
-		for (int i = beginPos; i < endPos; i++) {
+		for (slidePage page: sps.subList(start, end)){
+			if(page == null) continue;
+			slidePage nextPage = sps.get(sps.indexOf(page) + 1);
+//		for (int i = beginPos; i < endPos; i++) {
 			boolean continuePage = false;
 
 			// Same title, no doubt will be combined.
-			if (sps.get(i).get_title().contentEquals(sps.get(i + 1).get_title()))
+			if (page.get_title().contentEquals(nextPage.get_title()))
 				continuePage = true;
 			else {
 				// And for similar title, do further tests.
-				String titleA = sps.get(i).get_title();
-				String titleB = sps.get(i + 1).get_title();
+				String titleA = page.get_title();
+				String titleB = nextPage.get_title();
 
 				algorithmInterface ai = new algorithmInterface();
 				int le = ai.getLevenshteinDistance(titleA, titleB);
@@ -1688,54 +923,49 @@ public class outlineGenerator {
 				// Change title to most recognized one and delete order number.
 				if (continuePage && (withOrderA || withOrderB)) {
 					String finalTitle = titleA.length() > titleB.length() ? titleA : titleB;
-					sps.get(i).set_title(finalTitle);
+					page.set_title(finalTitle);
 				}
 			}
 
 			if (continuePage) {
-				LoggerSingleton.info(
-						"Combine page: ( " + sps.get(i).get_PageNum() + " <- " + sps.get(i + 1).get_PageNum() + " )");
-				sps.get(i).combineAtEnd(sps.get(i + 1));
-				sps.remove(i + 1);
-				endPos--;
-				i--;
+				LoggerSingleton.info("Combine page: ( " + page.get_PageNum() + " <- " + nextPage.get_PageNum() + " )");
+				page.combineAtEnd(nextPage);
+				sps.set(sps.indexOf(nextPage), null);
 			}
 
 		}
 
-		return sps;
+		return notNullPages(sps);
 	}
 
-	public boolean isInSamePageGroup(int a, int b, ArrayList<ArrayList<Integer>> samePageGroups) {
+
+	private boolean isInSamePageGroup(int a, int b, ArrayList<ArrayList<Integer>> samePageGroups) {
 		int match = -1, order = -1;
-		for (int i = 0; i < samePageGroups.size(); i++) {
-			ArrayList<Integer> temp = samePageGroups.get(i);
-			for (int j = 0; j < temp.size(); j++) {
-				if (a == temp.get(j)) {
-					match = i;
-					order = j;
+		for(ArrayList<Integer> group: samePageGroups)
+			for(Integer val: group)
+				if (a == val.intValue()) {
+					match = samePageGroups.indexOf(group);
+					order = group.indexOf(val);
 				}
 
-			}
-		}
-
 		if (match >= 0) {
-			ArrayList<Integer> temp = samePageGroups.get(match);
-			for (int j = order + 1; j < temp.size(); j++)
-				if (b == temp.get(j))
+			ArrayList<Integer> group = samePageGroups.get(match);
+			for(Integer val: group.subList(order + 1 , group.size()))
+				if (b == val.intValue())
 					return true;
 		}
 
 		return false;
 	}
+	
 
-	public slidePage combineSameSlides(slidePage a, slidePage b, boolean keepA) {
-		/*
-		 * In this function, one of the two similar slides will be deleted, but
-		 * all the content will be kept in the remaining one. The
-		 * better-organized or better-recognized one will take a more important
-		 * role in the reconstruction.
-		 */
+	/**
+	 * In this function, one of the two similar slides will be deleted, but
+	 * all the content will be kept in the remaining one. The
+	 * better-organized or better-recognized one will take a more important
+	 * role in the reconstruction.
+	 */
+	private slidePage combineSameSlides(slidePage a, slidePage b, boolean keepA) {
 
 		if (a.get_pageType() < -1) {
 			if (keepA)
@@ -1890,7 +1120,7 @@ public class outlineGenerator {
 		return target;
 	}
 
-	public ArrayList<slidePage> findIndexPage(ArrayList<slidePage> sps, int beginPosition, int endPosition) {
+	private ArrayList<slidePage> findIndexPage(ArrayList<slidePage> sps, int beginPosition, int endPosition) {
 		/*
 		 * In this function, Index Page (having a lot of texts as titles of
 		 * following page) will be single out. Connection between the text and
@@ -2172,7 +1402,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	public ArrayList<slidePage> dealWithTagPage(ArrayList<slidePage> sps,
+	private ArrayList<slidePage> dealWithTagPage(ArrayList<slidePage> sps,
 			ArrayList<ArrayList<Integer>> samePageGroups) {
 		/*
 		 * TagPage is those appears many time indicating starting a new topic It
@@ -2958,7 +2188,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	public ArrayList<slidePage> dealWithSplitPage(ArrayList<slidePage> sps) {
+	private ArrayList<slidePage> dealWithSplitPage(ArrayList<slidePage> sps) {
 
 		for (slidePage page: sps)
 			if (page.get_pageType() == 2)
@@ -3143,7 +2373,7 @@ public class outlineGenerator {
 		return false;
 	}
 
-	public ArrayList<slidePage> dealWithSectionPage(ArrayList<slidePage> sps) {
+	private ArrayList<slidePage> dealWithSectionPage(ArrayList<slidePage> sps) {
 
 		for (slidePage page: sps)
 			if (page.get_pageType() == 2)
@@ -3237,7 +2467,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	public boolean isHavingEndingPage(ArrayList<slidePage> sps) {
+	private boolean isHavingEndingPage(ArrayList<slidePage> sps) {
 		slidePage lsp = sps.get(sps.size() - 1);
 		String title = lsp.get_title();
 		if (title.length() == 0)
@@ -3265,7 +2495,7 @@ public class outlineGenerator {
 		return false;
 	}
 
-	public ArrayList<slidePage> concludeTheme(ArrayList<slidePage> sps, int beginPos, int endPos, int limit) {
+	private ArrayList<slidePage> concludeTheme(ArrayList<slidePage> sps, int beginPos, int endPos, int limit) {
 		/*
 		 * This function is used to create a virtual Index Page for a group of
 		 * slides sharing some keywords in their titles. The whole process will
@@ -3516,7 +2746,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	public ArrayList<textOutline> makeFinalTextOutlinesFromSlidePages(ArrayList<slidePage> sps) {
+	private ArrayList<textOutline> makeFinalTextOutlinesFromSlidePages(ArrayList<slidePage> sps) {
 		/*
 		 * In this function, all texts from all slide will be reorganized
 		 * together as the output.
@@ -3696,7 +2926,7 @@ public class outlineGenerator {
 		return finalResults;
 	}
 
-	public ArrayList<textOutline> makeTextOutlinesFromOneSlidePage(slidePage sp, int sp_Hierarchy) {
+	private ArrayList<textOutline> makeTextOutlinesFromOneSlidePage(slidePage sp, int sp_Hierarchy) {
 		ArrayList<textOutline> results = new ArrayList<textOutline>();
 
 		textOutline toTitle = new textOutline(sp.get_title(), sp_Hierarchy, 0);
@@ -4194,6 +3424,7 @@ public class outlineGenerator {
 		return sps_f;
 	}
 
+	
 	public void set_topicParams(counts c) {
 
 		if (c.topicCaseStartRatio() > 30)
@@ -4284,20 +3515,6 @@ public class outlineGenerator {
 
 		lastRoundTableAreas = new ArrayList<int[]>(get_potentialTitleArea());
 		lastRoundGaps = new ArrayList<Integer>(get_potentialHierarchicalGap());
-	}
-
-	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF,
-			boolean changeBBImageNames) throws IOException, InstantiationException, IllegalAccessException,
-					ClassNotFoundException, SQLException, ParserConfigurationException, SAXException, ParseException {
-
-		if (havePPTX)
-			return generateOutlineWithPPTX(tll,
-					Constants.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX));
-		else if (havePDF)
-			return generateOutlineWithPDF(tll, OCRLoader.loadOcrResults(OCROriginMode.PDF, get_workingDir(),
-					get_lectureID(), TimeZone.getDefault().getRawOffset(), changeBBImageNames));
-		else
-			return generateOutline(tll);
 	}
 
 }

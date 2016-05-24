@@ -14,7 +14,7 @@ public class slidePage {
 	public slidePage(){}
 	
 	public slidePage(ArrayList<textLine> list, outlineGenerator og) throws IOException{
-		if(og.is_isInitial())
+		if(og.isInitial())
 			init(list, og.get_pageWidth(), og.get_pageHeight());
 		else
 			init(list, og.get_pageWidth(), og.get_pageHeight(), og.get_potentialTitleArea(), og.get_potentialHierarchicalGap(),
