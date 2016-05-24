@@ -520,6 +520,7 @@ public class outlineGenerator {
 	
 
 	private ArrayList<textLine> removeLogo(ArrayList<textLine> inputLines) {
+		if(inputLines.isEmpty()) return inputLines;
 		int totalPage = inputLines.get(inputLines.size() - 1).get_slideID();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
 		for (textLine line: inputLines) {
