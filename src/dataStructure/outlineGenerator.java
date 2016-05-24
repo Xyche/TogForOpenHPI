@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.TimeZone;
 
@@ -649,7 +650,7 @@ public class outlineGenerator {
 		}
 		
 		for(ArrayList<Integer> pageGroup: samePageGroups)
-			pageGroup.sort(new Comparator<Integer>() {
+			Collections.sort(pageGroup, new Comparator<Integer>() {
 				@Override
 				public int compare(Integer first, Integer second) {
 					return first.compareTo(second);
@@ -736,7 +737,7 @@ public class outlineGenerator {
 			}
 		}
 		
-		pairs.sort(new Comparator<int[]>() {
+		Collections.sort(pairs, new Comparator<int[]>() {
 			@Override
 			public int compare(int[] first, int[] second) {
 				return new Integer(first[2]).compareTo(second[2]);
