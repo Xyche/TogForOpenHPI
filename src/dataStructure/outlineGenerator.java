@@ -671,6 +671,7 @@ public class outlineGenerator {
 		LoggerSingleton.info("Pages removed:");
 		String info = ""; 
 		for(slidePage page: sps.subList(0, sps.size() - 1)){
+			if (page == null) continue;
 			slidePage nextPage = sps.get(sps.indexOf(page) + 1);
 			if (isInSamePageGroup(page.get_PageNum(), nextPage.get_PageNum(), samePageGroups)) {
 				info += page.get_PageNum() + ", ";
