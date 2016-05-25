@@ -18,6 +18,7 @@ import helper.Constants;
 import helper.LoggerSingleton;
 import helper.OCRLoader;
 import helper.OCROriginMode;
+import helper.StaticsMethods;
 
 public class runTogForOpenHPI {
 
@@ -46,7 +47,7 @@ public class runTogForOpenHPI {
 		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY);
 		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Constants.DEFAULT_WORKING_DIR);
 		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY,
-				Constants.joinPath(Constants.DEFAULT_WORKING_DIR, lecture_id + ".log")));
+				StaticsMethods.joinPath(Constants.DEFAULT_WORKING_DIR, lecture_id + ".log")));
 
 		ArrayList<textLine> tll = new ArrayList<textLine>();
 		tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
@@ -88,7 +89,7 @@ public class runTogForOpenHPI {
 		/* show result */
 		LoggerSingleton.info("< Final Results: >");
 
-		File newFile = new File(Constants.joinPath(workingFolder, lecture_id, "outline"));
+		File newFile = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "outline"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
@@ -242,7 +243,7 @@ public class runTogForOpenHPI {
 		}
 		count = 0;
 		int sum = 0;
-		File newFile = new File(Constants.joinPath(workingFolder, lecture_id, "seg"));
+		File newFile = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "seg"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));		

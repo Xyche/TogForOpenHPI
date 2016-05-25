@@ -25,6 +25,7 @@ import helper.Constants;
 import helper.LoggerSingleton;
 import helper.OCRLoader;
 import helper.OCROriginMode;
+import helper.StaticsMethods;
 import sharedMethods.algorithmInterface;
 
 public class outlineGenerator {
@@ -143,23 +144,22 @@ public class outlineGenerator {
 		this.potentialTitleArea.clear();
 		this.potentialHierarchicalGap.clear();
 		
+		tll = removeLogo(tll);
 		if (havePPTX){
 			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages for video stream>");
-			tll = removeLogo(tll);
 			
 			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
 
 			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
 			step3(sps);
 
-			String pptxName = Constants.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX);
+			String pptxName = StaticsMethods.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX);
 			ArrayList<slidePage> sps_pptx = new pptParser().analyzePPTX(pptxName);
 			LoggerSingleton.show("< RESULT after step 3 (PPTX file)>", sps_pptx);
 
 			return generate(sps, sps_pptx);
 		} else if (havePDF){
 			LoggerSingleton.info("< STEP 2-1: Delete logo which appears in same position of many pages for video stream>");
-			tll = removeLogo(tll);
 			
 			ArrayList<textLine> tll_pdf = OCRLoader.loadOcrResults(OCROriginMode.PDF, get_workingDir(), get_lectureID(), TimeZone.getDefault().getRawOffset(), changeBBImageNames);
 			LoggerSingleton.info("< STEP 2-2: Delete logo which appears in same position of many pages for PDF file>");
@@ -176,7 +176,6 @@ public class outlineGenerator {
 			
 		} else {
 			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages >");
-			tll = removeLogo(tll);
 
 			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3: Find title and load in hierarchy >");
 
@@ -499,7 +498,7 @@ public class outlineGenerator {
 	}
 	
 	private void writeSyncFile(ArrayList<slidePage> sps) throws IOException {
-		File newFile = new File(Constants.joinPath(this.get_workingDir(), this.get_lectureID(), "sync"));
+		File newFile = new File(StaticsMethods.joinPath(this.get_workingDir(), this.get_lectureID(), "sync"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
@@ -510,14 +509,6 @@ public class outlineGenerator {
 		output.close();
 		
 	}
-
-	private ArrayList<slidePage> notNullPages(ArrayList<slidePage> list){
-		ArrayList<slidePage> result = new ArrayList<>();
-		for(slidePage page : list) if(page != null) result.add(page);
-		
-		return result;
-	}
-	
 
 	private ArrayList<textLine> removeLogo(ArrayList<textLine> inputLines) {
 		if(inputLines.isEmpty()) return inputLines;
@@ -705,7 +696,7 @@ public class outlineGenerator {
 		}
 		LoggerSingleton.info(info);
 
-		return notNullPages(sps);
+		return StaticsMethods.notNullObjects(sps);
 	}
 	
 
@@ -824,7 +815,7 @@ public class outlineGenerator {
 			}
 		}
 
-		return notNullPages(sps);
+		return StaticsMethods.notNullObjects(sps);
 	}
 	
 
@@ -942,7 +933,7 @@ public class outlineGenerator {
 
 		}
 
-		return notNullPages(sps);
+		return StaticsMethods.notNullObjects(sps);
 	}
 
 
@@ -3248,7 +3239,7 @@ public class outlineGenerator {
 		for (int i = 0; i < sps_f.size(); i++) {
 			int syncPosInVideo = -1;
 			for (int j = lastSyncPosInVideo + 1; j < sps.size(); j++) {
-				if (similarityMatrix[i][j] == 1 && Constants.isInSimilarPosition(i, j, sps_f.size(), sps.size())) {
+				if (similarityMatrix[i][j] == 1 && StaticsMethods.isInSimilarPosition(i, j, sps_f.size(), sps.size())) {
 					if (syncPosInVideo < 0)
 						syncPosInVideo = j;
 					else if (Math.abs(j - i) < Math.abs(syncPosInVideo - i))

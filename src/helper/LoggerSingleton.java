@@ -19,7 +19,7 @@ public class LoggerSingleton{
 	public static void setUp(String fileName) throws SecurityException, IOException{
 		m_log.removeAllAppenders();
 		System.out.println(String.format("Logs are written to %s", fileName));
-		m_log.addAppender(new FileAppender(new SimpleLayout(), fileName));
+		m_log.addAppender(new FileAppender(new SimpleLayout(), fileName, false));
 	}
 
 	public static void show(String text, List<slidePage> sps){

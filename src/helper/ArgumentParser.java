@@ -104,6 +104,7 @@ public class ArgumentParser {
 				OCROriginMode.description(OCROriginMode.teleTaskXML),
 				OCROriginMode.description(OCROriginMode.ACM_XML),
 				OCROriginMode.description(OCROriginMode.PDF),
+				OCROriginMode.description(OCROriginMode.JSON),
 		});
 	}
 

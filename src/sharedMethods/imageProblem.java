@@ -9,6 +9,7 @@ import javax.imageio.ImageIO;
 
 import helper.Constants;
 import helper.LoggerSingleton;
+import helper.StaticsMethods;
 
 public class imageProblem {
 	
@@ -16,14 +17,14 @@ public class imageProblem {
 	
 	public void cropTableFromSlide(String lectureID, int slideID, int[] tableRange) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File(Constants.joinPath(Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
+		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
 		
 		int left = tableRange[0] - 5 >= 0 ? tableRange[0] - 5 : 0;
 		int top = tableRange[2] - 5 >= 0 ? tableRange[2] - 5 : 0;
 		int width = tableRange[1] + 5 > pic.getWidth() ? pic.getWidth() - tableRange[0] : tableRange[1] - tableRange[0] + 10;
 		int height = tableRange[3] + 5 > pic.getHeight() ? pic.getHeight() - tableRange[2] : tableRange[3] - tableRange[2] + 10;
 		
-		File dir = new File(Constants.joinPath(Constants.DEFAULT_TOG_FOLDER, lectureID));
+		File dir = new File(StaticsMethods.joinPath(Constants.DEFAULT_TOG_FOLDER, lectureID));
 		if(!dir.exists())
 			dir.mkdir();
 		
@@ -37,7 +38,7 @@ public class imageProblem {
 		g.drawRect(left-3, top-3, width+6, height+6);
 		g.dispose();
 		
-		File outputfile = new File(Constants.joinPath(
+		File outputfile = new File(StaticsMethods.joinPath(
 				Constants.DEFAULT_TOG_FOLDER, 
 				lectureID, 
 				String.format("%s-%s-%s-%s.jpg", lectureID, slideID, tableRange[0], tableRange[2])));
@@ -48,14 +49,14 @@ public class imageProblem {
 	
 	public void runTessract(String lectureID, int slideID) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File(Constants.joinPath(
+		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(
 				Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
-		File outputfile = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "input.jpg"));
+		File outputfile = new File(StaticsMethods.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "input.jpg"));
 		ImageIO.write(pic, "jpg", outputfile);
 		
 		//LoggerSingleton.info("here");
-		File tessFolder = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Tesseract-OCR-executable"));
-		ProcessBuilder pb = new ProcessBuilder(Constants.joinPath(tessFolder.getAbsolutePath(), "run.bat"));
+		File tessFolder = new File(StaticsMethods.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Tesseract-OCR-executable"));
+		ProcessBuilder pb = new ProcessBuilder(StaticsMethods.joinPath(tessFolder.getAbsolutePath(), "run.bat"));
 		pb.directory(tessFolder);
 		Process p = pb.start();
 		int isFinished = -1;
@@ -69,20 +70,20 @@ public class imageProblem {
 		p.destroy();
 		//LoggerSingleton.info("there");
 		
-		pic = ImageIO.read(new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "output.jpg")));
-		File resultsDir = new File(Constants.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Result", lectureID));
+		pic = ImageIO.read(new File(StaticsMethods.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "output.jpg")));
+		File resultsDir = new File(StaticsMethods.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "Result", lectureID));
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
-		outputfile = new File(Constants.joinPath(resultsDir.getAbsolutePath(), slideID + ".jpg"));
+		outputfile = new File(StaticsMethods.joinPath(resultsDir.getAbsolutePath(), slideID + ".jpg"));
 		ImageIO.write(pic, "jpg", outputfile);
 		
-		File iFile = new File(Constants.joinPath(tessFolder.getAbsolutePath(), "tess-table.txt"));
+		File iFile = new File(StaticsMethods.joinPath(tessFolder.getAbsolutePath(), "tess-table.txt"));
 		if(iFile.exists())
 		{
 			BufferedReader br = new BufferedReader(new FileReader(iFile));
 			for(String a = br.readLine(); a != null; a = br.readLine())
 			{
-				File oFile = new File(Constants.joinPath(resultsDir.getAbsolutePath(), "stats.txt"));
+				File oFile = new File(StaticsMethods.joinPath(resultsDir.getAbsolutePath(), "stats.txt"));
 				BufferedWriter output = new BufferedWriter(new FileWriter(oFile, true));										
 				output.append(slideID + ":\t" + a);
 				output.newLine();
