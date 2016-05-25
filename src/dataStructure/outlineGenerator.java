@@ -1118,24 +1118,24 @@ public class outlineGenerator {
 		return target;
 	}
 
+	/**
+	 * In this function, Index Page (having a lot of texts as titles of
+	 * following page) will be single out. Connection between the text and
+	 * the title will be created by the parameter "child" and "childEnd" of
+	 * the textOutline. And unmatched text in the index page will be
+	 * removed.
+	 */
 	private ArrayList<slidePage> findIndexPage(ArrayList<slidePage> sps, int beginPosition, int endPosition) {
-		/*
-		 * In this function, Index Page (having a lot of texts as titles of
-		 * following page) will be single out. Connection between the text and
-		 * the title will be created by the parameter "child" and "childEnd" of
-		 * the textOutline. And unmatched text in the index page will be
-		 * removed.
-		 */
 		if (endPosition <= beginPosition)
 			return sps;
 		LoggerSingleton.info("Searching Index Page in << " + sps.get(beginPosition).get_PageNum() + " "
 				+ sps.get(endPosition).get_PageNum() + " >>");
 		ArrayList<Integer> IndexPos = new ArrayList<Integer>();
-		for (int i = beginPosition; i <= endPosition; i++) {
-			if (sps.get(i).get_pageType() < 0)
-				continue;
-			if (sps.get(i).get_texts().size() < 3)
-				continue;
+		int nextIdx = beginPosition;
+		for(slidePage page: sps.subList(beginPosition, endPosition + 1)){
+			int pageIdx = sps.indexOf(page), matchCount = 0, matchPoint = pageIdx + 1;
+			
+			if (pageIdx < nextIdx || page.get_pageType() < 0 || page.get_texts().size() < 3) continue;
 			/*
 			 * Only well-organized page can be signed as index page. First, go
 			 * over through all the text in a page, try to find a matched title
@@ -1143,17 +1143,13 @@ public class outlineGenerator {
 			 * a page, if the ratio is over 50%, a Index Page appears.
 			 */
 
-			int matchCount = 0;
-			int matchPoint = i + 1;
 			// Using 'matchPoint' to control the order, a later text should not
 			// find a matched title before a previous text.
-			for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
-				if (sps.get(i).get_texts().get(j).get_hierarchy() == 0)
-					continue;
-
-				String currentText = sps.get(i).get_texts().get(j).get_text();
-				for (int k = matchPoint; k <= endPosition; k++) {
-					String currentTitle = sps.get(k).get_title();
+			for (textOutline outline: page.get_texts()){
+				if (outline.get_hierarchy() == 0) continue;
+				String currentText = outline.get_text();
+				for (slidePage otherPage: sps.subList(matchPoint, endPosition + 1)){
+					String currentTitle = otherPage.get_title();
 					algorithmInterface ai = new algorithmInterface();
 					int le = ai.getLevenshteinDistance(currentText, currentTitle);
 					int longer = currentText.length() > currentTitle.length() ? currentText.length()
@@ -1163,57 +1159,114 @@ public class outlineGenerator {
 					if (lr <= 0.2 || (lr < 0.34 && wr >= 0.75)
 							|| currentText.toLowerCase().contains(currentTitle.toLowerCase())
 							|| currentTitle.toLowerCase().contains(currentText.toLowerCase())) {
-						sps.get(i).get_texts().get(j).set_child(sps.get(k).get_PageNum());
+						outline.set_child(otherPage.get_PageNum());
 						matchCount++;
-						matchPoint = k + 1;
+						matchPoint = sps.indexOf(otherPage) + 1;
 						break;
 					}
 				}
 			}
 			// for those page only contains a few matched text, connection will
 			// be retained, but never used.
-			if (matchCount * 2 >= sps.get(i).get_texts().size()) {
-				sps.get(i).set_pageType(1);
-				IndexPos.add(i);
-				i = matchPoint - 1;
+			if (matchCount * 2 >= page.get_texts().size()) {
+				page.set_pageType(1);
+				IndexPos.add(sps.indexOf(page));
+				nextIdx = matchPoint - 1;
 			}
 
 		}
 
-		for (int i = 0; i < IndexPos.size(); i++) {
-			/*
-			 * In this part, for a index page, all the texts will find a matched
-			 * title, empty ones will be removed. And from the first page after
-			 * the index page, to the last page got matched, all them will be
-			 * included inside the one [child, childEnd] area of a text in the
-			 * index page.
-			 *
-			 * Mainly, a text will be treated differently by whether it is a
-			 * matched one, and then differed again by whether it is the last
-			 * text, if not, differed again by whether the next text is matched.
-			 * So, there will be 6 different treatment.
-			 *
-			 * 'currentPos' is used to control the moving oder.
-			 */
-			int currentPos = IndexPos.get(i) + 1;
-			for (int j = 0; j < sps.get(IndexPos.get(i)).get_texts().size(); j++) {
-				textOutline currentTo = sps.get(IndexPos.get(i)).get_texts().get(j);
-				if (currentTo.get_child() < 0) {
-					if (j == sps.get(IndexPos.get(i)).get_texts().size() - 1) {
-						/*
-						 * Condition 1: not matched and as the last text. Only
-						 * when this text partly matched the next page's title
-						 * in the matching oder, and that page located before a
-						 * next index page and the last page of the
-						 * presentation, it will match the slide, or else, it
-						 * will be removed.
-						 */
+		/**
+		 * In this part, for a index page, all the texts will find a matched
+		 * title, empty ones will be removed. And from the first page after
+		 * the index page, to the last page got matched, all them will be
+		 * included inside the one [child, childEnd] area of a text in the
+		 * index page.
+		 *
+		 * Mainly, a text will be treated differently by whether it is a
+		 * matched one, and then differed again by whether it is the last
+		 * text, if not, differed again by whether the next text is matched.
+		 * So, there will be 6 different treatment.
+		 *
+		 * 'currentPos' is used to control the moving oder.
+		 */
+		for(Integer pos: IndexPos){
+			int posIdx = IndexPos.indexOf(pos), currentPos = pos + 1;
+			Integer nextPos = IndexPos.get(posIdx + 1);
+			slidePage page = sps.get(pos), currentPage = sps.get(currentPos);
+			boolean isLast = posIdx == IndexPos.size() - 1;
+			ArrayList<textOutline> outlines = page.get_texts();
+			
+			for (textOutline outline: outlines) {
+				int outlineIdx = outlines.indexOf(outline);
+				boolean isLastOutline = outlineIdx == outlines.size() - 1;
+				textOutline nextOutline = isLastOutline ? null : outlines.get(outlineIdx + 1);
+				boolean matched = outline.get_child() >= 0, nextMatched = isLastOutline ? false : nextOutline.get_child() >= 0;
+				
+				if (!matched && isLastOutline) { 
+					/**
+					 * Condition 1: not matched and as the last text. Only when
+					 * this text partly matched the next page's title in the
+					 * matching oder, and that page located before a next index
+					 * page and the last page of the presentation, it will match
+					 * the slide, or else, it will be removed.
+					 */
 
-						if (currentPos > (i == IndexPos.size() - 1 ? endPosition : IndexPos.get(i + 1) - 1)) {
-							sps.get(IndexPos.get(i)).get_texts().remove(j);
-							j--;
-						} else {
-							String currentText = currentTo.get_text();
+					if (currentPos > (isLast ? endPosition : nextPos - 1))
+						outlines.set(outlineIdx, null);
+					else {
+						String currentText = outline.get_text();
+						String currentTitle = currentPage.get_title();
+						algorithmInterface ai = new algorithmInterface();
+						int le = ai.getLevenshteinDistance(currentText, currentTitle);
+						int longer = currentText.length() > currentTitle.length() ? currentText.length()
+								: currentTitle.length();
+						double lr = (double) le / (double) longer;
+						double wr = ai.getSameWordsRatio(currentText, currentTitle);
+						if (lr <= 0.5 || wr >= 0.5) {
+							outline.set_child(currentPage.get_PageNum());
+							outline.set_childEnd(currentPage.get_PageNum());
+							currentPos++;
+						} else
+							outlines.set(outlineIdx, null);
+					}
+				} else if (!matched && !isLastOutline && !nextMatched) { 
+					/**
+					 * Condition 2: Not matched, Not last text, and the next
+					 * text is not matched either
+					 *
+					 * In this case, first moving forward until find a matching
+					 * text.
+					 *
+					 * If found, and there are some 'free' page between
+					 * currentPos and next matched page, try to find whether
+					 * there is a page partly match the current text. If so,
+					 * assign it, or else, delete it.
+					 *
+					 * If not found, and currentPos is still before a next
+					 * indexPage and the end of the presentation, try to partly
+					 * match the page at 'currentPos', matched, assign it, or
+					 * else delete it.
+					 */
+
+					boolean stillHaveMatch = false;
+					int endPos = currentPos;
+					for (int k = outlineIdx + 2; k < outlines.size(); k++)
+						if (outlines.get(k).get_child() > 0) {
+							stillHaveMatch = true;
+							for (int l = currentPos; l <= endPosition; l++)
+								if (sps.get(l).get_PageNum() == outlines.get(k).get_child()) {
+									endPos = l;
+									break;
+								}
+							break;
+						}
+
+					if (stillHaveMatch) {
+						if (currentPos >= endPos)
+							outlines.set(outlineIdx, null);
+						else {
+							String currentText = outline.get_text();
 							String currentTitle = sps.get(currentPos).get_title();
 							algorithmInterface ai = new algorithmInterface();
 							int le = ai.getLevenshteinDistance(currentText, currentTitle);
@@ -1222,166 +1275,77 @@ public class outlineGenerator {
 							double lr = (double) le / (double) longer;
 							double wr = ai.getSameWordsRatio(currentText, currentTitle);
 							if (lr <= 0.5 || wr >= 0.5) {
-								currentTo.set_child(sps.get(currentPos).get_PageNum());
-								currentTo.set_childEnd(sps.get(currentPos).get_PageNum());
+								outline.set_child(sps.get(currentPos).get_PageNum());
+								outline.set_childEnd(sps.get(currentPos).get_PageNum());
 								currentPos++;
-							} else {
-								sps.get(IndexPos.get(i)).get_texts().remove(j);
-								j--;
-							}
-						}
-					} else if (sps.get(IndexPos.get(i)).get_texts().get(j + 1).get_child() < 0) {
-						/*
-						 * Condition 2: Not matched, Not last text, and the next
-						 * text is not matched either
-						 *
-						 * In this case, first moving forward until find a
-						 * matching text.
-						 *
-						 * If found, and there are some 'free' page between
-						 * currentPos and next matched page, try to find whether
-						 * there is a page partly match the current text. If so,
-						 * assign it, or else, delete it.
-						 *
-						 * If not found, and currentPos is still before a next
-						 * indexPage and the end of the presentation, try to
-						 * partly match the page at 'currentPos', matched,
-						 * assign it, or else delet it.
-						 */
-						boolean stillHaveMatch = false;
-						int endPos = currentPos;
-						for (int k = j + 2; k < sps.get(IndexPos.get(i)).get_texts().size(); j++) {
-							if (sps.get(IndexPos.get(i)).get_texts().get(k).get_child() > 0) {
-								stillHaveMatch = true;
-								for (int l = currentPos; l <= endPosition; l++) {
-									if (sps.get(l).get_PageNum() == sps.get(IndexPos.get(i)).get_texts().get(k)
-											.get_child()) {
-										endPos = l;
-										break;
-									}
-								}
-								break;
-							}
-						}
-
-						if (stillHaveMatch) {
-							if (currentPos >= endPos) {
-								sps.get(IndexPos.get(i)).get_texts().remove(j);
-								j--;
-							} else {
-								String currentText = currentTo.get_text();
-								String currentTitle = sps.get(currentPos).get_title();
-								algorithmInterface ai = new algorithmInterface();
-								int le = ai.getLevenshteinDistance(currentText, currentTitle);
-								int longer = currentText.length() > currentTitle.length() ? currentText.length()
-										: currentTitle.length();
-								double lr = (double) le / (double) longer;
-								double wr = ai.getSameWordsRatio(currentText, currentTitle);
-								if (lr <= 0.5 || wr >= 0.5) {
-									currentTo.set_child(sps.get(currentPos).get_PageNum());
-									currentTo.set_childEnd(sps.get(currentPos).get_PageNum());
-									currentPos++;
-								} else {
-									sps.get(IndexPos.get(i)).get_texts().remove(j);
-									j--;
-								}
-							}
-						} else {
-							if (currentPos > (i == IndexPos.size() - 1 ? endPosition : IndexPos.get(i + 1) - 1)) {
-								sps.get(IndexPos.get(i)).get_texts().remove(j);
-								j--;
-							} else {
-								String currentText = currentTo.get_text();
-								String currentTitle = sps.get(currentPos).get_title();
-								algorithmInterface ai = new algorithmInterface();
-								int le = ai.getLevenshteinDistance(currentText, currentTitle);
-								int longer = currentText.length() > currentTitle.length() ? currentText.length()
-										: currentTitle.length();
-								double lr = (double) le / (double) longer;
-								double wr = ai.getSameWordsRatio(currentText, currentTitle);
-								if (lr <= 0.5 || wr >= 0.5) {
-									currentTo.set_child(sps.get(currentPos).get_PageNum());
-									currentTo.set_childEnd(sps.get(currentPos).get_PageNum());
-									currentPos++;
-								} else {
-									sps.get(IndexPos.get(i)).get_texts().remove(j);
-									j--;
-								}
-							}
+							} else
+								outlines.set(outlineIdx, null);
 						}
 					} else {
-						/*
-						 * Condition 3: Not matched, not last text, but next
-						 * text is matched. In this case, assign all the pages
-						 * between currentPos and the next matched page under
-						 * current text.
-						 */
-						currentTo.set_child(sps.get(currentPos).get_PageNum());
-						int last = currentTo.get_child();
-						for (int k = currentPos; k <= (i == IndexPos.size() - 1 ? endPosition
-								: IndexPos.get(i + 1) - 1); k++) {
-							if (sps.get(k).get_PageNum() >= sps.get(IndexPos.get(i)).get_texts().get(j + 1)
-									.get_child()) {
-								currentPos = k;
-								break;
+						if (currentPos > (isLast ? endPosition : nextPos - 1))
+							outlines.set(outlineIdx, null);
+						else {
+							String currentText = outline.get_text();
+							String currentTitle = sps.get(currentPos).get_title();
+							algorithmInterface ai = new algorithmInterface();
+							int le = ai.getLevenshteinDistance(currentText, currentTitle);
+							int longer = currentText.length() > currentTitle.length() ? currentText.length()
+									: currentTitle.length();
+							double lr = (double) le / (double) longer;
+							double wr = ai.getSameWordsRatio(currentText, currentTitle);
+							if (lr <= 0.5 || wr >= 0.5) {
+								outline.set_child(sps.get(currentPos).get_PageNum());
+								outline.set_childEnd(sps.get(currentPos).get_PageNum());
+								currentPos++;
 							} else
-								last = sps.get(k).get_PageNum();
+								outlines.set(outlineIdx, null);
 						}
-						currentTo.set_childEnd(last);
 					}
-				} else {
+				} else if (!matched && !isLastOutline && nextMatched) { 
+					/**
+					 * Condition 3: Not matched, not last text, but next text is
+					 * matched. In this case, assign all the pages between
+					 * currentPos and the next matched page under current text.
+					 */
+					outline.set_child(currentPage.get_PageNum());
+					int last = outline.get_child();
+					for (slidePage possiblePage : sps.subList(currentPos, isLast ? endPosition + 1 : nextPos)) {
+						int pageNum = possiblePage.get_PageNum(), nextChild = nextOutline.get_child();
+						if (pageNum >= nextChild) {
+							currentPos = sps.indexOf(possiblePage);
+							break;
+						} else
+							last = possiblePage.get_PageNum();
+					}
+					outline.set_childEnd(last);
+				} else if (matched) { // matched
 					/*
 					 * Condition 4: matched and last text -> just keep it.
 					 * Condition 5: matched, not last text, and next text
 					 * unmatched -> keep it also.
 					 */
-					if (j == sps.get(IndexPos.get(i)).get_texts().size() - 1) {
-						currentTo.set_childEnd(currentTo.get_child());
-						if (sps.get(currentPos).get_PageNum() < currentTo.get_child())
-							currentTo.set_child(sps.get(currentPos).get_PageNum());
-						for (int k = currentPos; k <= (i == IndexPos.size() - 1 ? endPosition
-								: IndexPos.get(i + 1) - 1); k++) {
-							if (sps.get(k).get_PageNum() == currentTo.get_childEnd()) {
-								currentPos = k + 1;
-								break;
-							} else if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
-								currentPos = k;
-								break;
-							}
-						}
-					} else if (sps.get(IndexPos.get(i)).get_texts().get(j + 1).get_child() < 0) {
-						currentTo.set_childEnd(currentTo.get_child());
-						if (sps.get(currentPos).get_PageNum() < currentTo.get_child())
-							currentTo.set_child(sps.get(currentPos).get_PageNum());
-						for (int k = currentPos; k <= (i == IndexPos.size() - 1 ? endPosition
-								: IndexPos.get(i + 1) - 1); k++) {
-							if (sps.get(k).get_PageNum() == currentTo.get_childEnd()) {
-								currentPos = k + 1;
-								break;
-							} else if (sps.get(k).get_PageNum() >= currentTo.get_childEnd()) {
-								currentPos = k;
-								break;
-							}
-						}
-					} else {
-						// Condition 6: matched and next text matched too ->
-						// assign all possible pages in the area
-						int last = currentTo.get_child();
-						if (sps.get(currentPos).get_PageNum() < currentTo.get_child())
-							currentTo.set_child(sps.get(currentPos).get_PageNum());
-						for (int k = currentPos; k <= (i == IndexPos.size() - 1 ? endPosition
-								: IndexPos.get(i + 1) - 1); k++) {
-							if (sps.get(k).get_PageNum() >= sps.get(IndexPos.get(i)).get_texts().get(j + 1)
-									.get_child()) {
-								currentPos = k;
-								break;
-							} else
-								last = sps.get(k).get_PageNum();
-						}
-						currentTo.set_childEnd(last);
+					int last = outline.get_child();
+
+					if (currentPage.get_PageNum() < outline.get_child())
+						outline.set_child(currentPage.get_PageNum());
+
+					for (slidePage possiblePage : sps.subList(currentPos, isLast ? endPosition + 1 : nextPos)) {
+						int pageNum = possiblePage.get_PageNum(), nextChild = nextOutline.get_child(),
+								childEnd = outline.get_childEnd();
+						if (isLastOutline || nextChild < 0 && pageNum >= childEnd) {
+							currentPos = sps.indexOf(possiblePage) + pageNum == childEnd ? 1 : 0;
+							break;
+						} else if (!isLastOutline && nextChild >= 0 && pageNum >= nextChild) {
+							currentPos = sps.indexOf(possiblePage);
+							break;
+						} else if (!isLastOutline && nextChild >= 0 && pageNum < nextChild)
+							last = page.get_PageNum();
 					}
+
+					outline.set_childEnd(last);
 				}
 			}
+			page.set_texts(StaticsMethods.notNullObjects(outlines));
 		}
 
 		for (int i = beginPosition; i <= endPosition; i++) {
