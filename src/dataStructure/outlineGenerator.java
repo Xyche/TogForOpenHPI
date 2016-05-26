@@ -1653,17 +1653,17 @@ public class outlineGenerator {
 						 * endPoint can be sure to match the related text, just
 						 * do it.
 						 */
-						if (endPoint == tagPos.size() - 1) {
-							target.get_texts().get(matchTextOutlineNum.get(endPoint))
-									.set_child(sps.get(tagPos.get(endPoint) + 1).get_PageNum());
-							target.get_texts().get(matchTextOutlineNum.get(endPoint))
-									.set_childEnd(sps.get(sps.size() - (haveEnding ? 2 : 1)).get_PageNum());
-						} else {
-							target.get_texts().get(matchTextOutlineNum.get(endPoint))
-									.set_child(sps.get(tagPos.get(endPoint) + 1).get_PageNum());
-							target.get_texts().get(matchTextOutlineNum.get(endPoint))
-									.set_childEnd(sps.get(tagPos.get(endPoint + 1) - 1).get_PageNum());
-						}
+						int childPageIdx = tagPos.get(endPoint) + 1, childEndPageIdx = 0;
+						if (endPoint == tagPos.size() - 1)
+							childEndPageIdx = sps.size() - (haveEnding ? 2 : 1);
+						else
+							childEndPageIdx = tagPos.get(endPoint + 1) - 1;
+						
+						textOutline outline = target.get_texts().get(matchTextOutlineNum.get(endPoint)); 
+						childPageIdx = Math.max(Math.min(childPageIdx, sps.size() - 1), 0);
+						childEndPageIdx = Math.max(Math.min(childEndPageIdx, sps.size()-1), 0);
+						outline.set_child(sps.get(childPageIdx).get_PageNum());
+						outline.set_childEnd(sps.get(childEndPageIdx).get_PageNum());
 					} else {
 						/*
 						 * When there's distance between startPoint and
