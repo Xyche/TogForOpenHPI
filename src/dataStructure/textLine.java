@@ -6,6 +6,11 @@ import sharedMethods.*;
 
 public class textLine {
 	
+	@Override
+	public String toString() {
+		return String.format("%d: \"%s\" @ (%d : %d)|(%d x %d)", _slideID, _text, _top, _left, _width, _height);
+	}
+	
 	public textLine(){}
 	
 	public textLine(int slideID, String text, int type, int top, int left, int width, int height, Time time){

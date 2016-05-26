@@ -11,6 +11,11 @@ import java.sql.*;
 
 public class slidePage {
 
+	@Override
+	public String toString() {
+		return String.format("\"%s\" - %s", this._title, this._startTime.toString());
+	}
+	
 	public slidePage(){}
 	
 	public slidePage(ArrayList<textLine> list, outlineGenerator og) throws IOException{
@@ -206,7 +211,7 @@ public class slidePage {
 
 		this.set_pageWidth(pageWidth);
 		this.set_pageHeight(pageHeight);
-		double wp = (double)pageWidth / 1024;
+//		double wp = (double)pageWidth / 1024;
 		double hp = (double)pageHeight / 768;
 		this._titleLocation[0] = pageWidth;
 		this._titleLocation[2] = pageHeight;
@@ -1070,7 +1075,7 @@ public class slidePage {
  		if(list.size() == 0) return;
 
 		double wp = (double)this.get_pageWidth() / 1024;
-		double hp = (double)this.get_pageHeight() / 768;
+//		double hp = (double)this.get_pageHeight() / 768;
 
 		//Do the text-lines combination in same row only
 		this.connectContinuousTextlineInSameRowOnly(list, Gaps, lowCaseStart, extraSignStart);
@@ -1242,105 +1247,105 @@ public class slidePage {
  		return list;
  	}
 
- 	private ArrayList<textLine> connectContinuousTextline(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
- 	{
- 		/* In this function, all the textLines left (after deleting the no-use and for-title)
-		 * will be load into textOntlines. First those long texts occupied 2 vertical lines or more
-		 * will be combined, and the (x, y) of combined textLined will be updated
-		 * Then, do the loading process */
- 		for(int i = 1; i < list.size(); i++)
- 		{
- 			if(list.get(i).isInSameRow(list.get(i-1)))
- 			{
- 				if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
- 				{
- 					if(list.get(i).get_left() < list.get(i-1).get_left())
-					{
-						textLine t = list.get(i);
-						list.set(i, list.get(i-1));
-						list.set(i-1, t);
-					}
-					list.get(i-1).set_width(list.get(i).get_left() + list.get(i).get_width() - list.get(i-1).get_left());
-					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
-					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
-					list.get(i-1).set_height(height);
-
-					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
-					list.remove(i);
-					i--;
- 				}
- 			}
- 			else
- 				continue;
- 		}
-
- 		for(int i = 1; i < list.size(); i++)
- 		{
- 			if(list.get(i).isInSameRow(list.get(i-1)))
- 				continue;
- 			else
- 			{
- 				if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
- 				{
- 					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
-							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
-					list.get(i-1).set_width(right - list.get(i-1).get_left());
-					list.get(i-1).set_lastLineWidth(list.get(i).get_lastLineWidth());
-					list.get(i-1).set_lastLineLeft(list.get(i).get_left());
-					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
-					list.get(i-1).set_height(height);
-					list.get(i-1).set_bottom( list.get(i).get_bottom() );
-
-					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
-					list.remove(i);
-					i--;
- 				}
- 			}
- 		}
-
-
- 		/*
- 		for(int i = 1; i < list.size(); i++)
-		{
-			if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
-			{
-				boolean isSameLine = false;
-				if(list.get(i).isInSameRow(list.get(i-1)))
-				{
-					if(list.get(i).get_left() < list.get(i-1).get_left())
-					{
-						textLine t = list.get(i);
-						list.set(i, list.get(i-1));
-						list.set(i-1, t);
-					}
-					list.get(i-1).set_width(list.get(i).get_left() + list.get(i).get_width() - list.get(i-1).get_left());
-					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
-					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
-					list.get(i-1).set_height(height);
-					isSameLine = true;
-
-				}
-				else
-				{
-					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
-							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
-					list.get(i-1).set_width(right - list.get(i-1).get_left());
-					list.get(i-1).set_lastLineWidth(list.get(i).get_lastLineWidth());
-					list.get(i-1).set_lastLineLeft(list.get(i).get_left());
-					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
-					list.get(i-1).set_height(height);
-					list.get(i-1).set_bottom( list.get(i).get_bottom() );
-				}
-
-				list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
-				list.remove(i);
-				i--;
-				if(isSameLine) i--;
-			}
-		}
- 		*/
- 		return list;
- 	}
+// 	private ArrayList<textLine> connectContinuousTextline(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
+// 	{
+// 		/* In this function, all the textLines left (after deleting the no-use and for-title)
+//		 * will be load into textOntlines. First those long texts occupied 2 vertical lines or more
+//		 * will be combined, and the (x, y) of combined textLined will be updated
+//		 * Then, do the loading process */
+// 		for(int i = 1; i < list.size(); i++)
+// 		{
+// 			if(list.get(i).isInSameRow(list.get(i-1)))
+// 			{
+// 				if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
+// 				{
+// 					if(list.get(i).get_left() < list.get(i-1).get_left())
+//					{
+//						textLine t = list.get(i);
+//						list.set(i, list.get(i-1));
+//						list.set(i-1, t);
+//					}
+//					list.get(i-1).set_width(list.get(i).get_left() + list.get(i).get_width() - list.get(i-1).get_left());
+//					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
+//					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
+//					list.get(i-1).set_height(height);
+//
+//					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
+//					list.remove(i);
+//					i--;
+// 				}
+// 			}
+// 			else
+// 				continue;
+// 		}
+//
+// 		for(int i = 1; i < list.size(); i++)
+// 		{
+// 			if(list.get(i).isInSameRow(list.get(i-1)))
+// 				continue;
+// 			else
+// 			{
+// 				if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
+// 				{
+// 					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
+//							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
+//					list.get(i-1).set_width(right - list.get(i-1).get_left());
+//					list.get(i-1).set_lastLineWidth(list.get(i).get_lastLineWidth());
+//					list.get(i-1).set_lastLineLeft(list.get(i).get_left());
+//					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
+//					list.get(i-1).set_height(height);
+//					list.get(i-1).set_bottom( list.get(i).get_bottom() );
+//
+//					list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
+//					list.remove(i);
+//					i--;
+// 				}
+// 			}
+// 		}
+//
+//
+// 		/*
+// 		for(int i = 1; i < list.size(); i++)
+//		{
+//			if(isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart))
+//			{
+//				boolean isSameLine = false;
+//				if(list.get(i).isInSameRow(list.get(i-1)))
+//				{
+//					if(list.get(i).get_left() < list.get(i-1).get_left())
+//					{
+//						textLine t = list.get(i);
+//						list.set(i, list.get(i-1));
+//						list.set(i-1, t);
+//					}
+//					list.get(i-1).set_width(list.get(i).get_left() + list.get(i).get_width() - list.get(i-1).get_left());
+//					list.get(i-1).set_lastLineWidth(list.get(i-1).get_width());
+//					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
+//					list.get(i-1).set_height(height);
+//					isSameLine = true;
+//
+//				}
+//				else
+//				{
+//					int right = list.get(i-1).get_left() + list.get(i-1).get_width() < list.get(i).get_left() + list.get(i).get_width() ?
+//							list.get(i).get_left() + list.get(i).get_width() : list.get(i-1).get_left() + list.get(i-1).get_width();
+//					list.get(i-1).set_width(right - list.get(i-1).get_left());
+//					list.get(i-1).set_lastLineWidth(list.get(i).get_lastLineWidth());
+//					list.get(i-1).set_lastLineLeft(list.get(i).get_left());
+//					int height = list.get(i-1).get_height() > list.get(i).get_height() ? list.get(i-1).get_height() : list.get(i).get_height();
+//					list.get(i-1).set_height(height);
+//					list.get(i-1).set_bottom( list.get(i).get_bottom() );
+//				}
+//
+//				list.get(i-1).set_text(list.get(i-1).get_text() + " " + list.get(i).get_text());
+//				list.remove(i);
+//				i--;
+//				if(isSameLine) i--;
+//			}
+//		}
+// 		*/
+// 		return list;
+// 	}
 
  	private ArrayList<textLine> connectContinuousTextlineInSameRowOnly(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
  	{
@@ -1511,7 +1516,7 @@ public class slidePage {
  	private boolean isTextContinued(ArrayList<textLine> list, int index, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart)
 	{
 		double wp = (double)this.get_pageWidth() / 1024;
-		double hp = (double)this.get_pageHeight() / 768;
+//		double hp = (double)this.get_pageHeight() / 768;
 
 		if(index <= 0)
 			return false;
@@ -4855,89 +4860,88 @@ public class slidePage {
 		return f;
 	}
 	
-	private boolean _onlyForStats_1(int a, int b)
-	{
-		//this function will only be used for gathering stats, to judge whether the two input slides are IN-FACT-BY-HUMAN-EYE the same.
-
-		ArrayList<int[]> para = new ArrayList<int[]>();
-		para.clear();
-
-		int x1[] = {2,8};
-		para.add(x1);
-
-		int x2[] = {15,16,18,20,22,24};
-		para.add(x2);
-
-		int x3[] = {17,19,21,23,25};
-		para.add(x3);
-
-		int x4[] = {28,34};
-		para.add(x4);
-
-		int x5[] = {29,31,33,35};
-		para.add(x5);
-
-		int x6[] = {30,32,36};
-		para.add(x6);
-
-		int x7[] = {37,38,40};
-		para.add(x7);
-
-		int x8[] = {39,41,43,45};
-		para.add(x8);
-
-		int x9[] = {58,60,62};
-		para.add(x9);
-
-		int x91[] = {59,61,63};
-		para.add(x91);
-
-		int x10[] = {47,48,49,50,52,54,56};
-		para.add(x10);
-
-		int x11[] = {51,53,55,57,65};
-		para.add(x11);
-
-		int x12[] = {74,76,77};
-		para.add(x12);
-
-		int x13[] = {75,78};
-		para.add(x13);
-
-		int x14[] = {81,83};
-		para.add(x14);
-
-		int x14a[] = {84,85};
-		para.add(x14a);
-
-		int x15[] = {42,44,88};
-		para.add(x15);
-		/**/
-		int match=-1, order=-1;
-		for(int i = 0; i< para.size(); i++)
-		{
-			int temp[] = para.get(i);
-			for(int j = 0; j < temp.length; j++)
-			{
-				if(a == temp[j])
-				{
-					match = i;
-					order = j;
-				}
-
-			}
-		}
-
-		if(match >= 0)
-		{
-			int temp[] = para.get(match);
-			for(int j = order+1; j<temp.length; j++)
-				if(b == temp[j])
-					return true;
-		}
-
-		return false;
-	}
+// 	private boolean _onlyForStats_1(int a, int b)
+//	{
+//		//this function will only be used for gathering stats, to judge whether the two input slides are IN-FACT-BY-HUMAN-EYE the same.
+//
+//		ArrayList<int[]> para = new ArrayList<int[]>();
+//		para.clear();
+//
+//		int x1[] = {2,8};
+//		para.add(x1);
+//
+//		int x2[] = {15,16,18,20,22,24};
+//		para.add(x2);
+//
+//		int x3[] = {17,19,21,23,25};
+//		para.add(x3);
+//
+//		int x4[] = {28,34};
+//		para.add(x4);
+//
+//		int x5[] = {29,31,33,35};
+//		para.add(x5);
+//
+//		int x6[] = {30,32,36};
+//		para.add(x6);
+//
+//		int x7[] = {37,38,40};
+//		para.add(x7);
+//
+//		int x8[] = {39,41,43,45};
+//		para.add(x8);
+//
+//		int x9[] = {58,60,62};
+//		para.add(x9);
+//
+//		int x91[] = {59,61,63};
+//		para.add(x91);
+//
+//		int x10[] = {47,48,49,50,52,54,56};
+//		para.add(x10);
+//
+//		int x11[] = {51,53,55,57,65};
+//		para.add(x11);
+//
+//		int x12[] = {74,76,77};
+//		para.add(x12);
+//
+//		int x13[] = {75,78};
+//		para.add(x13);
+//
+//		int x14[] = {81,83};
+//		para.add(x14);
+//
+//		int x14a[] = {84,85};
+//		para.add(x14a);
+//
+//		int x15[] = {42,44,88};
+//		para.add(x15);
+//		int match=-1, order=-1;
+//		for(int i = 0; i< para.size(); i++)
+//		{
+//			int temp[] = para.get(i);
+//			for(int j = 0; j < temp.length; j++)
+//			{
+//				if(a == temp[j])
+//				{
+//					match = i;
+//					order = j;
+//				}
+//
+//			}
+//		}
+//
+//		if(match >= 0)
+//		{
+//			int temp[] = para.get(match);
+//			for(int j = order+1; j<temp.length; j++)
+//				if(b == temp[j])
+//					return true;
+//		}
+//
+//		return false;
+//	}*/
 
 
 

@@ -3158,44 +3158,42 @@ public class outlineGenerator {
 		return sps;
 	}
 
+	@SuppressWarnings("serial")
 	private ArrayList<slidePage> synchronizeVideoToFile(ArrayList<slidePage> sps, ArrayList<slidePage> sps_f) {
 		LoggerSingleton.info("Sychronization: video-" + sps.size() + ", file-" + sps_f.size());
 
 		algorithmInterface ai = new algorithmInterface();
 
 		/*
-		 * Search for matching evidence globally: (NOT exclusive) 0: No Match 1:
-		 * Perfectly Match: by levenshtein distance of all textual content 2:
-		 * Title Match: same titles 3: Title Similar: similar titles
+		 * Search for matching evidence globally: (NOT exclusive) 
+		 * 0: No Match 
+		 * 1: Perfectly Match: by levenshtein distance of all textual content 
+		 * 2: Title Match: same titles 
+		 * 3: Title Similar: similar titles
 		 */
 		int[][] similarityMatrix = new int[sps_f.size()][sps.size()];
-		for (int i = 0; i < sps_f.size(); i++) {
-			slidePage spf = sps_f.get(i);
-			String title_f = spf.get_title().length() > 0 ? spf.get_title()
-					: (spf.get_texts().size() > 0 ? spf.get_texts().get(0).get_text() : "");
+		for (slidePage page1: sps_f) {
+			String page1Title = page1.get_title().length() > 0 ? page1.get_title() : (page1.get_texts().size() > 0 ? page1.get_texts().get(0).get_text() : "");
 
-			for (int j = 0; j < sps.size(); j++) {
-				slidePage spv = sps.get(j);
-				String title_v = spv.get_title().length() > 0 ? spv.get_title()
-						: (spv.get_texts().size() > 0 ? spv.get_texts().get(0).get_text() : "");
-				if (spf.isSamePage(spv))
-					similarityMatrix[i][j] = 1;
-				else if (title_f.contentEquals(title_v))
-					similarityMatrix[i][j] = 2;
-				else if (ai.getLevenshteinDistance(title_v, title_f) < Math.max(title_v.length(), title_f.length())
-						* 0.5)
-					similarityMatrix[i][j] = 3;
-				else
-					similarityMatrix[i][j] = 0;
+			for (slidePage page2: sps) {
+				String page2Title = page2.get_title().length() > 0 ? page2.get_title() : (page2.get_texts().size() > 0 ? page2.get_texts().get(0).get_text() : "");
+				int similarity = 0;
+				if (page1.isSamePage(page2))
+					similarity = 1;
+				else if (page1Title.contentEquals(page2Title))
+					similarity = 2;
+				else if (ai.getLevenshteinDistance(page2Title, page1Title) < Math.max(page2Title.length(), page1Title.length()) * 0.5)
+					similarity = 3;
+				similarityMatrix[sps_f.indexOf(page1)][sps.indexOf(page2)] = similarity;
 			}
 
 		}
 
 		ArrayList<String> groups = new ArrayList<>();
-		for (int[] group : similarityMatrix)
-			groups.add(Joiner.on("\t").join(Arrays.asList(group)));
+		for (final int[] group : similarityMatrix)
+			groups.add("[" + Joiner.on(" ").join(new ArrayList<Integer>() {{ for (int i : group) add(i); }}) + "]");
 
-		LoggerSingleton.info(Joiner.on("\n").join(groups));
+		LoggerSingleton.info("Similarity Matrix: \n" + Joiner.on("\n").join(groups));
 
 		int lastSyncPosInVideo = -1;
 		int lastSyncPosInFile = -1;
