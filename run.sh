@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-rm -f errors && touch errors
+rm -f results && touch results
 for f in $1/*;
 do 
   if [[ -d $f ]];
@@ -13,18 +13,18 @@ do
 #      -r $FOLDER/$ID  \
 #      -config /usr/local/share/Video-OCR-TT/configs/config_video-ocr-tt.xml  \
 #      -i $ID  \
-#      -useResultPathForSaving && echo "Video OCR for $ID succeeded" >> results || {echo "$ID failed" >> errors }
-    if [[ (-f $FOLDER/$ID/recognition/recognition.xml) ]];
-    then
+#      -useResultPathForSaving && echo "Video OCR for $ID succeeded" >> results || {echo "$ID failed" >> results }
+    #if [[ (-f $FOLDER/$ID/thumbnails.json) ]];
+    #then
     java -jar target/tog-1.0-SNAPSHOT-jar-with-dependencies.jar \
       -folder $FOLDER \
       -id $ID \
-      -log logs/$ID.log && echo "java for $ID succeeded" >> errors || {echo "java for $ID failed" >> errors }
-    fi
+      -log logs/$ID.log && echo "java for $ID succeeded" >> results || {echo "java for $ID failed" >> results }
+    #fi
   fi
 done
 
-
+python /home/dimitri/repos/slide_detection/convert_slides_to_images.py -f $1 --overwrite -s "160x90" 2> /dev/null
 
 
 #mvn -q package
