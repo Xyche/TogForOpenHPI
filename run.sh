@@ -1,15 +1,15 @@
 #!/bin/bash
 
-## USAGE: ./finalrun.sh <video> <slides> <id> <output_dir> [<lang> <ocr_config>]
+## USAGE: ./run.sh <video> <slides> <id> <output_dir> [<lang> <ocr_config>]
 ## EXAMPLES:
-##    normal: ./finalrun.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
-##    no OCR: NO_OCR=1 ./finalrun.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
-##    no OCR and no TOG: NO_OCR=1 NO_TOG=1 ./finalrun.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
+##    normal: ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
+##    no OCR: NO_OCR=1 ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
+##    no OCR and no TOG: NO_OCR=1 NO_TOG=1 ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
 
 
 OCR_EXECUTABLE="/usr/local/bin/Video-OCR-TT"
-TOG_EXECUTABLE="java -jar target/tog-1.0-SNAPSHOT-jar-with-dependencies.jar"
-SLIDE_EXTRACTOR="python ../slide_detection/convert_synced_pdf_to_images.py"
+TOG_EXECUTABLE="java -jar /home/dimitri/repos/TogForOpenHPI/target/tog-1.0-SNAPSHOT-jar-with-dependencies.jar"
+SLIDE_EXTRACTOR="python /home/dimitri/repos/slide_detection/convert_synced_pdf_to_images.py"
 
 VIDEO="$1"
 PDF="$2"
