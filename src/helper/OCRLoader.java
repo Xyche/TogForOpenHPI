@@ -289,11 +289,11 @@ public class OCRLoader {
 
 	}
 
-	static ArrayList<textLine> loadFromJSON(String workingFolder, String lecture_id)
+	static ArrayList<textLine> loadFromJSON(String workingFolder)
 			throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
 
 		ArrayList<textLine> tll = JSONThumbnailsParser
-				.parse(StaticsMethods.joinPath(workingFolder, lecture_id, "thumbnails.json"));
+				.parse(StaticsMethods.joinPath(workingFolder, "thumbnails.json"));
 
 		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
 		Collections.sort(tll, new Comparator<textLine>() {
@@ -335,9 +335,9 @@ public class OCRLoader {
 			return loadFromACMXML(lecture_id);
 		case PDF:
 			return new pdfParser()
-					.analyzePDF(StaticsMethods.joinPath(workingFolder, lecture_id, Constants.DEFAULT_SLIDES_PDF));
+					.analyzePDF(StaticsMethods.joinPath(workingFolder, Constants.DEFAULT_SLIDES_PDF));
 		case JSON:
-			return loadFromJSON(workingFolder, lecture_id);
+			return loadFromJSON(workingFolder);
 
 		}
 

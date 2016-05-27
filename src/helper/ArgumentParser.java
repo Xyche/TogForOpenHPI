@@ -20,6 +20,7 @@ public class ArgumentParser {
 	}
 
 	public static final String LECTURE_KEY = "id";
+	public static final String SLIDES_KEY = "slides";
 	public static final String FOLDER_KEY = "folder";
 	public static final String LOGGER_KEY = "log";
 	public static final String MODE_KEY = "mode";
@@ -38,21 +39,27 @@ public class ArgumentParser {
 		opt.addOption(new Option(PDF_KEY, "assume the slides are in PDF format and enforce PDF parsing"));
 		opt.addOption(new Option(PPTX_KEY, "assume the slides are in PPTX format and enforce PPTX parsing"));
 		opt.addOption(new Option(CHANGE_NAMES_KEY, "rename thumbnails"));
-		
+
 		opt.addOption(
-			OptionBuilder
+				OptionBuilder
+				.withArgName( "slides" )
+				.hasArg()
+				.isRequired()
+				.withDescription(  "pdf or pptx file with slides" )
+				.create( SLIDES_KEY ));
+
+		opt.addOption(
+				OptionBuilder
 				.withArgName( "lecture_id" )
-                .hasArg()
-                .isRequired()
-                .withDescription(  "id of the processed lecture" )
-                .create( LECTURE_KEY ));
+				.hasArg()
+				.withDescription(  "id of the processed lecture. Default: name of the slides file" )
+				.create( LECTURE_KEY ));
 
 		opt.addOption(
 			OptionBuilder
-				.withArgName( "lecture_folder" )
-				.isRequired()
+				.withArgName( "working_dir" )
                 .hasArg()
-                .withDescription( "folder with the preprocessed slides" )
+                .withDescription( "working directory, where output should be created. Default: current directory" )
                 .create( FOLDER_KEY ));
 
 		opt.addOption(

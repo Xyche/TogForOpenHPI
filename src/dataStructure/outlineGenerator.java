@@ -23,8 +23,6 @@ import com.google.common.collect.Lists;
 import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
-import helper.OCRLoader;
-import helper.OCROriginMode;
 import helper.StaticsMethods;
 import sharedMethods.algorithmInterface;
 
@@ -137,7 +135,7 @@ public class outlineGenerator {
 
 
 	// main generation method
-	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF,
+	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF, String referenceFilePath,
 			boolean changeBBImageNames) throws IOException, InstantiationException, IllegalAccessException,
 					ClassNotFoundException, SQLException, ParserConfigurationException, SAXException, ParseException {
 
@@ -153,15 +151,14 @@ public class outlineGenerator {
 			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
 			step3(sps);
 
-			String pptxName = StaticsMethods.joinPath(get_workingDir(), get_lectureID(), Constants.DEFAULT_SLIDES_PPTX);
-			ArrayList<slidePage> sps_pptx = new pptParser().analyzePPTX(pptxName);
+			ArrayList<slidePage> sps_pptx = new pptParser().analyzePPTX(referenceFilePath);
 			LoggerSingleton.show("< RESULT after step 3 (PPTX file)>", sps_pptx);
 
 			return generate(sps, sps_pptx);
 		} else if (havePDF){
 			LoggerSingleton.info("< STEP 2-1: Delete logo which appears in same position of many pages for video stream>");
 			
-			ArrayList<textLine> tll_pdf = OCRLoader.loadOcrResults(OCROriginMode.PDF, get_workingDir(), get_lectureID(), TimeZone.getDefault().getRawOffset(), changeBBImageNames);
+			ArrayList<textLine> tll_pdf = new pdfParser().analyzePDF(referenceFilePath); 
 			LoggerSingleton.info("< STEP 2-2: Delete logo which appears in same position of many pages for PDF file>");
 			tll_pdf = removeLogo(tll_pdf);
 
@@ -498,7 +495,7 @@ public class outlineGenerator {
 	}
 	
 	private void writeSyncFile(ArrayList<slidePage> sps) throws IOException {
-		File newFile = new File(StaticsMethods.joinPath(this.get_workingDir(), this.get_lectureID(), "sync"));
+		File newFile = new File(StaticsMethods.joinPath(this.get_workingDir(), "sync"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));

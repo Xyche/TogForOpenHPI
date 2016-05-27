@@ -1,4 +1,6 @@
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.util.*;
 
@@ -37,20 +39,21 @@ public class runTogForOpenHPI {
 		final OCROriginMode OCR_Origin = OCROriginMode.parseFromOption(modeString);
 
 		final int pageWidth = ArgumentParser.width(cmd), pageHeight = ArgumentParser.height(cmd);
-
+		
 		boolean havePDF = cmd.hasOption(ArgumentParser.PDF_KEY);
 		boolean havePPTX = cmd.hasOption(ArgumentParser.PPTX_KEY);
 		if (havePDF == havePPTX) {
 			havePDF = true;
 			havePPTX = false;
 		}
-		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY);
-		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Constants.DEFAULT_WORKING_DIR);
+		final Path slidesPath = Paths.get(cmd.getOptionValue(ArgumentParser.SLIDES_KEY)).toAbsolutePath();
+		final String lecture_id = cmd.getOptionValue(ArgumentParser.LECTURE_KEY, slidesPath.getFileName().toString());
+		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Paths.get(".").toAbsolutePath().toString());
+		
 		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY,
-				StaticsMethods.joinPath(Constants.DEFAULT_WORKING_DIR, lecture_id + ".log")));
+				StaticsMethods.joinPath(workingFolder, lecture_id + ".log")));
 
-		ArrayList<textLine> tll = new ArrayList<textLine>();
-		tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
+		ArrayList<textLine> tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
 		LoggerSingleton.info("< STEP 1: Loading from Database >");
 		for (textLine t: tll)
@@ -63,7 +66,7 @@ public class runTogForOpenHPI {
 
 		outlineGenerator og = new outlineGenerator(pageWidth, pageHeight, workingFolder, lecture_id);
 		
-		ArrayList<textOutline> finalResults = og.generate(tll, havePPTX, havePDF, changeBBImageNames);
+		ArrayList<textOutline> finalResults = og.generate(tll, havePPTX, havePDF, slidesPath.toString(), changeBBImageNames);
 
 		og.set_topicParams(textOutline.count(finalResults));
 
@@ -77,7 +80,9 @@ public class runTogForOpenHPI {
 			og.copyStateForAdaptiveRound();
 
 			// Do the adaptive round
-			finalResults = og.generate(OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, false), havePPTX, havePDF, changeBBImageNames);
+
+			tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
+			finalResults = og.generate(tll, havePPTX, havePDF, slidesPath.toString(), changeBBImageNames);
 
 			// Update the status of "LowCaseStart" and "HavingDot" for this
 			// round
@@ -89,7 +94,7 @@ public class runTogForOpenHPI {
 		/* show result */
 		LoggerSingleton.info("< Final Results: >");
 
-		File newFile = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "outline"));
+		File newFile = new File(StaticsMethods.joinPath(workingFolder, "outline"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
@@ -243,7 +248,7 @@ public class runTogForOpenHPI {
 		}
 		count = 0;
 		int sum = 0;
-		File newFile = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "seg"));
+		File newFile = new File(StaticsMethods.joinPath(workingFolder, "seg"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));		

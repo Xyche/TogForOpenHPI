@@ -15,9 +15,9 @@ public class imageProblem {
 	
 	public imageProblem() {}
 	
-	public void cropTableFromSlide(String lectureID, int slideID, int[] tableRange) throws IOException
+	public void cropTableFromSlide(String workingDir, String lectureID, int slideID, int[] tableRange) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
+		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(workingDir, lectureID, "thumbnails", slideID + ".jpg")));
 		
 		int left = tableRange[0] - 5 >= 0 ? tableRange[0] - 5 : 0;
 		int top = tableRange[2] - 5 >= 0 ? tableRange[2] - 5 : 0;
@@ -47,10 +47,9 @@ public class imageProblem {
 		return;
 	}
 	
-	public void runTessract(String lectureID, int slideID) throws IOException
+	public void runTessract(String workingDir, String lectureID, int slideID) throws IOException
 	{
-		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(
-				Constants.DEFAULT_WORKING_DIR, lectureID, "thumbnails", slideID + ".jpg")));
+		BufferedImage pic = ImageIO.read(new File(StaticsMethods.joinPath(workingDir, lectureID, "thumbnails", slideID + ".jpg")));
 		File outputfile = new File(StaticsMethods.joinPath(Constants.DEFAULT_TESSERACT_FOLDER, "input.jpg"));
 		ImageIO.write(pic, "jpg", outputfile);
 		

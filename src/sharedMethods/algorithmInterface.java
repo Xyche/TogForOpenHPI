@@ -108,21 +108,21 @@ public class algorithmInterface {
 		return sw.containTooManySameLetter(a);
 	}
 	
-	public void cropTable(String lectureID, int slideID, int[] tableRange)
+	public void cropTable(String workingDir, String lectureID, int slideID, int[] tableRange)
 	{
 		imageProblem ip = new imageProblem();
 		try {
-			ip.cropTableFromSlide(lectureID, slideID, tableRange);
+			ip.cropTableFromSlide(workingDir, lectureID, slideID, tableRange);
 		} catch (IOException e) {
 			LoggerSingleton.info("Table Cropping Error!" + lectureID + "-" + slideID);
 		}
 	}
 	
-	public void runTesseract(String lectureID, int slideID)
+	public void runTesseract(String workingDir, String lectureID, int slideID)
 	{
 		imageProblem ip = new imageProblem();
 		try {
-			ip.runTessract(lectureID, slideID);
+			ip.runTessract(workingDir, lectureID, slideID);
 		} catch (IOException e) {
 			e.printStackTrace();
 			LoggerSingleton.info("Run Tesseract Error on " + lectureID + "-" + slideID);
