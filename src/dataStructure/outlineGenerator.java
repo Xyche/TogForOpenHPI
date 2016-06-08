@@ -23,7 +23,7 @@ import com.google.common.collect.Lists;
 import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
-import helper.StaticsMethods;
+import helper.StaticMethods;
 import sharedMethods.algorithmInterface;
 
 public class outlineGenerator {
@@ -495,7 +495,7 @@ public class outlineGenerator {
 	}
 	
 	private void writeSyncFile(ArrayList<slidePage> sps) throws IOException {
-		File newFile = new File(StaticsMethods.joinPath(this.get_workingDir(), "sync"));
+		File newFile = new File(StaticMethods.joinPath(this.get_workingDir(), "sync"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
@@ -693,7 +693,7 @@ public class outlineGenerator {
 		}
 		LoggerSingleton.info(info);
 
-		return StaticsMethods.notNullObjects(sps);
+		return StaticMethods.notNullObjects(sps);
 	}
 	
 
@@ -812,7 +812,7 @@ public class outlineGenerator {
 			}
 		}
 
-		return StaticsMethods.notNullObjects(sps);
+		return StaticMethods.notNullObjects(sps);
 	}
 	
 
@@ -930,7 +930,7 @@ public class outlineGenerator {
 
 		}
 
-		return StaticsMethods.notNullObjects(sps);
+		return StaticMethods.notNullObjects(sps);
 	}
 
 
@@ -1342,7 +1342,7 @@ public class outlineGenerator {
 					outline.set_childEnd(last);
 				}
 			}
-			page.set_texts(StaticsMethods.notNullObjects(outlines));
+			page.set_texts(StaticMethods.notNullObjects(outlines));
 		}
 
 		for (int i = beginPosition; i <= endPosition; i++) {
@@ -3198,7 +3198,7 @@ public class outlineGenerator {
 		for (int i = 0; i < sps_f.size(); i++) {
 			int syncPosInVideo = -1;
 			for (int j = lastSyncPosInVideo + 1; j < sps.size(); j++) {
-				if (similarityMatrix[i][j] == 1 && StaticsMethods.isInSimilarPosition(i, j, sps_f.size(), sps.size())) {
+				if (similarityMatrix[i][j] == 1 && StaticMethods.isInSimilarPosition(i, j, sps_f.size(), sps.size())) {
 					if (syncPosInVideo < 0)
 						syncPosInVideo = j;
 					else if (Math.abs(j - i) < Math.abs(syncPosInVideo - i))
@@ -3345,9 +3345,9 @@ public class outlineGenerator {
 		for (int i = 0; i < unmatchedList.size(); i++) {
 			int previousSec, afterSec = 0, continuous = 1;
 			previousSec = unmatchedList.get(i) == 0 ? 0
-					: ai.timeToSeconds(sps_f.get(unmatchedList.get(i) - 1).get_startTime().toString());
+					: StaticMethods.timeToSeconds(sps_f.get(unmatchedList.get(i) - 1).get_startTime().toString());
 			afterSec = unmatchedList.get(i) == sps_f.size() - 1 ? 0
-					: ai.timeToSeconds(sps_f.get(unmatchedList.get(i) + 1).get_startTime().toString());
+					: StaticMethods.timeToSeconds(sps_f.get(unmatchedList.get(i) + 1).get_startTime().toString());
 
 			for (int j = 1; i + j < unmatchedList.size(); j++) {
 				if (unmatchedList.get(i + j) - unmatchedList.get(i + j - 1) == 1) {
@@ -3355,7 +3355,7 @@ public class outlineGenerator {
 					// unmatchedList.get(i+j));
 					continuous++;
 					afterSec = unmatchedList.get(i + j) == sps_f.size() - 1 ? 0
-							: ai.timeToSeconds(sps_f.get(unmatchedList.get(i + j) + 1).get_startTime().toString());
+							: StaticMethods.timeToSeconds(sps_f.get(unmatchedList.get(i + j) + 1).get_startTime().toString());
 				} else
 					break;
 			}

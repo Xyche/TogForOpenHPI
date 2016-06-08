@@ -5,6 +5,7 @@
 ##    normal: ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
 ##    no OCR: NO_OCR=1 ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
 ##    no OCR and no TOG: NO_OCR=1 NO_TOG=1 ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
+##    no EXTRACTION: NO_EXTRACT=1 ./run.sh /home/dimitri/test_slides/video.mp4 /home/dimitri/test_slides/slides.pdf test /home/dimitri/test_slides/outdir
 
 
 OCR_EXECUTABLE="/usr/local/bin/Video-OCR-TT"

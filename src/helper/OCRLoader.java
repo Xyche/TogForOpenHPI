@@ -109,7 +109,7 @@ public class OCRLoader {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document doc = builder
-				.parse(new File(StaticsMethods.joinPath(workingFolder, lecture_id, "recognition", "recognition.xml")));
+				.parse(new File(StaticMethods.joinPath(workingFolder, lecture_id, "recognition", "recognition.xml")));
 
 		Element root = doc.getDocumentElement();
 		NodeList nodes = root.getElementsByTagName("TextObject");
@@ -177,16 +177,16 @@ public class OCRLoader {
 				tll.get(i).set_slideID(currentSlideNumNew);
 
 				if (changeBBImageNames) {
-					File original = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "thumbnails",
+					File original = new File(StaticMethods.joinPath(workingFolder, lecture_id, "thumbnails",
 							currentSlideNumOriginal + ".jpg"));
 					File renamed = new File(
-							StaticsMethods.joinPath(workingFolder, lecture_id, "thumbnails", currentSlideNumNew + ".jpg"));
+							StaticMethods.joinPath(workingFolder, lecture_id, "thumbnails", currentSlideNumNew + ".jpg"));
 					if (!renamed.exists())
 						original.renameTo(renamed);
 
-					original = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "tmp" + "BBImages",
+					original = new File(StaticMethods.joinPath(workingFolder, lecture_id, "tmp" + "BBImages",
 							currentSlideNumOriginal + ".jpg"));
-					renamed = new File(StaticsMethods.joinPath(workingFolder, lecture_id, "tmp" + "BBImages",
+					renamed = new File(StaticMethods.joinPath(workingFolder, lecture_id, "tmp" + "BBImages",
 							currentSlideNumNew + ".jpg"));
 					if (!renamed.exists())
 						original.renameTo(renamed);
@@ -208,14 +208,14 @@ public class OCRLoader {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document doc = builder
-				.parse(new File(StaticsMethods.joinPath(Constants.DEFAULT_ACM_DIR, "ocr_result_xml", lecture_id + ".xml")));
+				.parse(new File(StaticMethods.joinPath(Constants.DEFAULT_ACM_DIR, "ocr_result_xml", lecture_id + ".xml")));
 
 		Element root = doc.getDocumentElement();
 		NodeList nodes = root.getElementsByTagName("TextObject");
 
 		ArrayList<String> pagePic = new ArrayList<String>();
 		ArrayList<Integer> pageMilisec = new ArrayList<Integer>();
-		File timeFile = new File(StaticsMethods.joinPath(Constants.DEFAULT_ACM_DIR, lecture_id + ".txt"));
+		File timeFile = new File(StaticMethods.joinPath(Constants.DEFAULT_ACM_DIR, lecture_id + ".txt"));
 		if (timeFile.exists()) {
 			BufferedReader br = new BufferedReader(new FileReader(timeFile));
 			for (String a = br.readLine(); a != null; a = br.readLine()) {
@@ -293,7 +293,7 @@ public class OCRLoader {
 			throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
 
 		ArrayList<textLine> tll = JSONThumbnailsParser
-				.parse(StaticsMethods.joinPath(workingFolder, "thumbnails.json"));
+				.parse(StaticMethods.joinPath(workingFolder, "thumbnails.json"));
 
 		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
 		Collections.sort(tll, new Comparator<textLine>() {
@@ -335,7 +335,7 @@ public class OCRLoader {
 			return loadFromACMXML(lecture_id);
 		case PDF:
 			return new pdfParser()
-					.analyzePDF(StaticsMethods.joinPath(workingFolder, Constants.DEFAULT_SLIDES_PDF));
+					.analyzePDF(StaticMethods.joinPath(workingFolder, Constants.DEFAULT_SLIDES_PDF));
 		case JSON:
 			return loadFromJSON(workingFolder);
 

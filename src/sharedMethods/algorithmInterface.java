@@ -1,22 +1,11 @@
 package sharedMethods;
 
 import java.io.IOException;
-import java.sql.Time;
-
 import helper.LoggerSingleton;
 
 public class algorithmInterface {
 	
 	public algorithmInterface () {}
-	
-
-	public Time parseJsonTimeTag(String tag)
-	{
-		TimeProblem tp = new TimeProblem();
-		return tp.parseJsonTimeTag(tag);
-	}
-
-
 	
 	public int getLevenshteinDistance(String a, String b)
 	{
@@ -76,18 +65,6 @@ public class algorithmInterface {
 	{
 		sameWords sw = new sameWords();
 		return sw.isLogicalSameWords(a, b);
-	}
-	
-	public String secondsToTime(int seconds)
-	{
-		TimeProblem tp = new TimeProblem();
-		return tp.toStringFromSeconds(seconds);
-	}
-	
-	public int timeToSeconds(String s)
-	{
-		TimeProblem tp = new TimeProblem();
-		return tp.toSecondsFromString(s);
 	}
 	
 	public boolean isSignal(char a)

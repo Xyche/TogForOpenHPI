@@ -18,7 +18,6 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import dataStructure.textLine;
-import sharedMethods.algorithmInterface;
 
 public abstract class JSONThumbnailsParser {
 	public enum keys{
@@ -55,7 +54,7 @@ public abstract class JSONThumbnailsParser {
 		for(Object raw_slide : content.get(keys.images, new JSONArray())){
 			JSONObjectWrapper slide = new JSONObjectWrapper(raw_slide);
 			Path path = Paths.get(slide.get(keys.path, ""));
-			Time startTime = new algorithmInterface().parseJsonTimeTag(slide.get(keys.start, ""));
+			Time startTime = StaticMethods.parseJsonTimeTag(slide.get(keys.start, ""));
 
 			for (Object textLines : slide.get(keys.textlines, new JSONArray())){
 				JSONObjectWrapper textLinesWrapper = new JSONObjectWrapper(textLines);

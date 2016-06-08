@@ -13,14 +13,13 @@ import org.xml.sax.SAXException;
 
 import com.google.common.base.Joiner;
 
-import sharedMethods.algorithmInterface;
 import dataStructure.*;
 import helper.ArgumentParser;
 import helper.Constants;
 import helper.LoggerSingleton;
 import helper.OCRLoader;
 import helper.OCROriginMode;
-import helper.StaticsMethods;
+import helper.StaticMethods;
 
 public class runTogForOpenHPI {
 
@@ -51,7 +50,7 @@ public class runTogForOpenHPI {
 		final String workingFolder = cmd.getOptionValue(ArgumentParser.FOLDER_KEY, Paths.get(".").toAbsolutePath().toString());
 		
 		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY,
-				StaticsMethods.joinPath(workingFolder, lecture_id + ".log")));
+				StaticMethods.joinPath(workingFolder, lecture_id + ".log")));
 
 		ArrayList<textLine> tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
@@ -94,7 +93,7 @@ public class runTogForOpenHPI {
 		/* show result */
 		LoggerSingleton.info("< Final Results: >");
 
-		File newFile = new File(StaticsMethods.joinPath(workingFolder, "outline"));
+		File newFile = new File(StaticMethods.joinPath(workingFolder, "outline"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
@@ -248,11 +247,10 @@ public class runTogForOpenHPI {
 		}
 		count = 0;
 		int sum = 0;
-		File newFile = new File(StaticsMethods.joinPath(workingFolder, "seg"));
+		File newFile = new File(StaticMethods.joinPath(workingFolder, "seg"));
 		if (newFile.exists()) newFile.delete();
 
 		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));		
-		algorithmInterface ai = new algorithmInterface();
 		for (textOutline title: onlyTitles){
 			final int i = onlyTitles.indexOf(title), currentDuration = durationBySeconds.get(i);
 			final boolean isLast = i == onlyTitles.size() - 1;
@@ -269,7 +267,7 @@ public class runTogForOpenHPI {
 				
 				textOutline titleWithLongestDuration = onlyTitles.get(longestPos);
 				LoggerSingleton.info("< Segment '" + titleWithLongestDuration.get_text() + "' > Duration: "
-						+ ai.secondsToTime(title.get_childEnd()));
+						+ StaticMethods.secondsToTime(title.get_childEnd()));
 
 				output.append(Joiner.on("\t").join(new String[]{
 						title.get_time().toString(),
@@ -284,7 +282,7 @@ public class runTogForOpenHPI {
 			for (int j = 0; j <= title.get_hierarchy(); j++) LoggerSingleton.info("--");
 
 			LoggerSingleton.info(title.get_text() + " " + onlyTitles.get(i).get_time());
-			if (isLast) LoggerSingleton.info("Average Segment-Length: " + ai.secondsToTime(sum / count));
+			if (isLast) LoggerSingleton.info("Average Segment-Length: " + StaticMethods.secondsToTime(sum / count));
 		}
 		output.close();
 
