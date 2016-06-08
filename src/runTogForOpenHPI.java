@@ -93,13 +93,13 @@ public class runTogForOpenHPI {
 		/* show result */
 		LoggerSingleton.info("< Final Results: >");
 
-		File newFile = new File(StaticMethods.joinPath(workingFolder, "outline"));
-		if (newFile.exists()) newFile.delete();
+		File outlineFile = new File(StaticMethods.joinPath(workingFolder, "outline"));
+		if (outlineFile.exists()) outlineFile.delete();
 
-		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));
+		BufferedWriter outlineOutput = new BufferedWriter(new FileWriter(outlineFile));
 		for (textOutline text : finalResults) {
-			output.append(Joiner.on("\t").join(new Object[]{text.get_hierarchy(), text.get_child(), text.get_text()}));
-			output.newLine();
+			outlineOutput.append(Joiner.on("\t").join(new Object[]{text.get_hierarchy(), text.get_child(), text.get_text()}));
+			outlineOutput.newLine();
 
 			// Control of hierarchy inside single page
 			if (text.get_child() > 2) continue;
@@ -111,7 +111,7 @@ public class runTogForOpenHPI {
 				LoggerSingleton.info("$$ ");
 			LoggerSingleton.info(text.get_text() + " " + text.get_time());
 		}
-		output.close();
+		outlineOutput.close();
 
 		/*
 		 * Until now, the content structure generation process has been
@@ -122,15 +122,10 @@ public class runTogForOpenHPI {
 
 		LoggerSingleton.info("-------------------------------------------------------");
 
-		// ArrayList<textOutline> segments = new ArrayList<textOutline>();
-		/* segments = */autoSegmentationAndAnnotation(finalResults, workingFolder, lecture_id);
+		/* autoSegmentationAndAnnotation */
 
-	}
-
-	public static ArrayList<textOutline> autoSegmentationAndAnnotation(ArrayList<textOutline> results, String workingFolder,
-			String lecture_id) throws IOException {
 		ArrayList<textOutline> onlyTitles = new ArrayList<textOutline>();
-		for (textOutline text: results) 
+		for (textOutline text: finalResults) 
 			if (text.get_child() == 0) 
 				onlyTitles.add(text);
 
@@ -247,10 +242,10 @@ public class runTogForOpenHPI {
 		}
 		count = 0;
 		int sum = 0;
-		File newFile = new File(StaticMethods.joinPath(workingFolder, "seg"));
-		if (newFile.exists()) newFile.delete();
+		File segmentsFile = new File(StaticMethods.joinPath(workingFolder, "seg"));
+		if (segmentsFile.exists()) segmentsFile.delete();
 
-		BufferedWriter output = new BufferedWriter(new FileWriter(newFile));		
+		BufferedWriter segmentsOutput = new BufferedWriter(new FileWriter(segmentsFile));		
 		for (textOutline title: onlyTitles){
 			final int i = onlyTitles.indexOf(title), currentDuration = durationBySeconds.get(i);
 			final boolean isLast = i == onlyTitles.size() - 1;
@@ -269,12 +264,12 @@ public class runTogForOpenHPI {
 				LoggerSingleton.info("< Segment '" + titleWithLongestDuration.get_text() + "' > Duration: "
 						+ StaticMethods.secondsToTime(title.get_childEnd()));
 
-				output.append(Joiner.on("\t").join(new String[]{
+				segmentsOutput.append(Joiner.on("\t").join(new String[]{
 						title.get_time().toString(),
 						isLast ? "<ending>" : (nextTitle.get_hierarchy() == 0 ? "<casual>" : "<logical>"), 
 						titleWithLongestDuration.get_text()
 				}));
-				output.newLine();
+				segmentsOutput.newLine();
 
 				sum += title.get_childEnd();
 			}
@@ -284,9 +279,9 @@ public class runTogForOpenHPI {
 			LoggerSingleton.info(title.get_text() + " " + onlyTitles.get(i).get_time());
 			if (isLast) LoggerSingleton.info("Average Segment-Length: " + StaticMethods.secondsToTime(sum / count));
 		}
-		output.close();
+		segmentsOutput.close();
 
-		return onlyTitles;
+//		 ArrayList<textOutline> segments = onlyTitles;
 	}
 
 }

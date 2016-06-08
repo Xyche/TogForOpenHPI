@@ -348,7 +348,6 @@ public class outlineGenerator {
 				if (page.get_pageType() >= 0 && firstText.get_hierarchy() == 1) {
 					page.set_title(firstText.get_text());
 					page.get_texts().remove(firstText);
-					sps.add(page);
 				} else continue;
 			}
 			ArrayList<textOutline> old_texts = new ArrayList<>(page.get_texts()); 
@@ -356,6 +355,8 @@ public class outlineGenerator {
 			for (textOutline to: old_texts)
 				if (to.get_hierarchy() != 0)
 					page.get_texts().add(to);
+
+			sps.add(page);
 		}
 		return sps;
 	}

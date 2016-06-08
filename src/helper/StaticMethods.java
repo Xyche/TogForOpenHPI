@@ -86,7 +86,7 @@ public abstract class StaticMethods {
         long localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
         long timeByMillisecond = (hours * 3600 + minutes * 60 + seconds) * 1000 - localTimeZoneOffset;
         time.setTime(timeByMillisecond);
-		//System.out.println(tag + ": " + hours + '\t' + minutes + '\t' + seconds + '\t' + millies);
+//		LoggerSingleton.info(tag + ": " + hours + '\t' + minutes + '\t' + seconds + '\t' + timeByMillisecond);
 		return time;
 	}
 	
