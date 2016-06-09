@@ -1,4 +1,4 @@
-package helper;
+package helper.enums;
 
 public enum OCROriginMode {
 	/*
@@ -12,7 +12,7 @@ public enum OCROriginMode {
 	
 	public static final OCROriginMode DEFAULT_MODE = JSON;
 
-	static String description(OCROriginMode mode) {
+	public static String description(OCROriginMode mode) {
 		String desc = "%d";
 		switch (mode) {
 		case mySQL:

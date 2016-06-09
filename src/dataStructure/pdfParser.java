@@ -13,6 +13,7 @@ import org.apache.pdfbox.util.PDFTextStripper;
 import org.apache.pdfbox.util.TextPosition;
 
 import helper.Constants;
+import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
 
@@ -65,7 +66,7 @@ public class pdfParser extends PDFTextStripper{
 					if (chars.size() <= 0) {
 						// Add an empty image page by setting one single
 						// textline
-						textLine current = new textLine(k + 1, "**Image Page, No Text**", 0,
+						textLine current = new textLine(k + 1, "**Image Page, No Text**", TextLineType.COMMON_TEXT,
 								(int) (height * rate * 0.2), (int) (width * rate * 0.4), (int) (width * rate * 0.2),
 								(int) (height * rate * 0.05), new Time(0));
 						tls.add(current);
@@ -98,7 +99,7 @@ public class pdfParser extends PDFTextStripper{
 	        	        	
 	        	        	//System.out.println(pre.get_height() + "\t" + sHeight);
 	        	        	
-	        	        	textLine current = new textLine(k+1, pre.get_text(), 0, sTop, sLeft, sWidth, sHeight, pre.get_time());
+	        	        	textLine current = new textLine(k+1, pre.get_text(), TextLineType.COMMON_TEXT, sTop, sLeft, sWidth, sHeight, pre.get_time());
 	        	        	tls.add(current);
 	        	        	
 	        	        	pre.set_text(text.getCharacter());
@@ -120,7 +121,7 @@ public class pdfParser extends PDFTextStripper{
 	        	        	
 	        	        	//System.out.println(pre.get_height() + "\t" + sHeight);
 	        	        	
-	        	        	textLine current = new textLine(k+1, pre.get_text(), 0, sTop, sLeft, sWidth, sHeight, pre.get_time());
+	        	        	textLine current = new textLine(k+1, pre.get_text(), TextLineType.COMMON_TEXT, sTop, sLeft, sWidth, sHeight, pre.get_time());
 	        	        	tls.add(current);
 	        	        	
 	        	        	pre.set_text(text.getCharacter());
@@ -158,7 +159,7 @@ public class pdfParser extends PDFTextStripper{
 		        	        	
 		        	        	//System.out.println(pre.get_height() + "\t" + sHeight);
 		        	        	
-		        	        	textLine current = new textLine(k+1, pre.get_text(), 0, sTop, sLeft, sWidth, sHeight, pre.get_time());
+		        	        	textLine current = new textLine(k+1, pre.get_text(), TextLineType.COMMON_TEXT, sTop, sLeft, sWidth, sHeight, pre.get_time());
 		        	        	tls.add(current);
 	        	        	}
 	        	        }

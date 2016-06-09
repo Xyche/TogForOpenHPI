@@ -18,6 +18,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import dataStructure.textLine;
+import helper.enums.TextLineType;
 
 public abstract class JSONThumbnailsParser {
 	public enum keys{
@@ -80,7 +81,7 @@ public abstract class JSONThumbnailsParser {
 				line.set_bottom(line.get_top() + line.get_height());
 				line.set_lastLineWidth(line.get_width());
 				line.set_lastLineLeft(line.get_left());
-				line.set_type(0);
+				line.set_type(TextLineType.COMMON_TEXT);
 
 				if(!line.get_text().contentEquals(" "))
 					//if(t.get_left() >= 320) //Only for "pip" stream, to cut out the non-slide area

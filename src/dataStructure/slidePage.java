@@ -4,6 +4,7 @@ import java.util.*;
 
 import helper.Constants;
 import helper.LoggerSingleton;
+import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
 import java.io.*;
@@ -31,8 +32,8 @@ public class slidePage {
 
 				this.set_pageWidth(pageWidth);
 				this.set_pageHeight(pageHeight);
-				double wp = (double)pageWidth / 1024;
-				double hp = (double)pageHeight / 768;
+				double wp = (double)pageWidth / Constants.DEFAULT_WIDTH;
+				double hp = (double)pageHeight / Constants.DEFAULT_HEIGHT;
 				this._titleLocation[0] = pageWidth;
 				this._titleLocation[2] = pageHeight;
 
@@ -76,7 +77,7 @@ public class slidePage {
 				{
 					for(int i = 0; i < list.size(); i++)
 					{
-						if(list.get(i).get_type() <= -2)
+						if(list.get(i).get_type().isInvalid())
 							continue;
 						else
 						{
@@ -146,12 +147,12 @@ public class slidePage {
 						( list.get(i).get_height() >= textHeightAverage * 4 && list.get(i).get_height() >= 35*hp ) )
 					{
 						//list.get(i).set_text("#NoUseString#");
-						list.get(i).set_type(-2);
+						list.get(i).set_type(TextLineType.TOO_HIGH);
 					}
 					else if(list.get(i).get_height() <= 6 * hp)
-						list.get(i).set_type(-2);
+						list.get(i).set_type(TextLineType.TOO_HIGH);
 					else if(list.get(i).get_height() <= 8 * hp)
-						list.get(i).set_type(-3);
+						list.get(i).set_type(TextLineType.INVALID);
 				}
 
 
@@ -167,7 +168,7 @@ public class slidePage {
 				//Now, DELETE those #NoUseString# based on content
 				for(int i = list.size() - 1; i >= 0; i--)
 				{
-					if(list.get(i).get_type() == -1)
+					if(list.get(i).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
 						list.remove(i);
 				}
 
@@ -193,7 +194,7 @@ public class slidePage {
 				//now, DELETE those #NoUseString# based on size, remain those with height 9 or 10 for middleline detection
 				for(int i = list.size() - 1; i >= 0; i--)
 				{
-					if(list.get(i).get_type() == -2)
+					if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
 						list.remove(i);
 				}
 
@@ -211,8 +212,8 @@ public class slidePage {
 
 		this.set_pageWidth(pageWidth);
 		this.set_pageHeight(pageHeight);
-//		double wp = (double)pageWidth / 1024;
-		double hp = (double)pageHeight / 768;
+//		double wp = (double)pageWidth / Constants.DEFAULT_WIDTH;
+		double hp = (double)pageHeight / Constants.DEFAULT_HEIGHT;
 		this._titleLocation[0] = pageWidth;
 		this._titleLocation[2] = pageHeight;
 
@@ -248,12 +249,12 @@ public class slidePage {
 				( list.get(i).get_height() >= textHeightAverage * 3 && list.get(i).get_height() >= 35*hp ) )
 			{
 				list.get(i).set_text("#NoUseString#");
-				list.get(i).set_type(-2);
+				list.get(i).set_type(TextLineType.TOO_HIGH);
 			}
 			else if(list.get(i).get_height() <= 10*hp)
 			{
 				list.get(i).set_text("#NoUseString#");
-				list.get(i).set_type(-2);
+				list.get(i).set_type(TextLineType.TOO_HIGH);
 			}
 		}
 
@@ -272,7 +273,7 @@ public class slidePage {
 		//Then, DELETE those #NoUseString#
 		for(int i = list.size() - 1; i >= 0; i--)
 		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				list.remove(i);
 		}
 
@@ -317,14 +318,15 @@ public class slidePage {
 	 *  2: Tag slide
 	 *  3: Split slide
 	 */
+	
 
 	private int _pageNum = -1;
 	private int _pageType = -1;
 	private String _title = "";
 	private int _hierarchy = 0;
 	private ArrayList<textOutline> _texts = new ArrayList<textOutline>();
-	private int _pageWidth = 1024;
-	private int _pageHeight = 768;
+	private int _pageWidth = Constants.DEFAULT_WIDTH;
+	private int _pageHeight = Constants.DEFAULT_HEIGHT;
 	private Time _startTime = new Time(0);
 
 
@@ -480,7 +482,7 @@ public class slidePage {
 		 * a textLines is 'big' enough.	 */
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type() == -2)
+			if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
 				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
@@ -508,10 +510,10 @@ public class slidePage {
 
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				continue;
 
-			if(list.get(i).get_type() == 1 && titleCandidates.size() <= 2 &&
+			if(list.get(i).get_type().equals(TextLineType.COMMON_TEXT) && titleCandidates.size() <= 2 &&
 				( list.get(i).get_top() >= 20*hp || ( list.get(i).get_top() >= 10*hp &&
 				( list.get(i).get_height() >= (averageHeight + biggest)/2 || list.get(i).get_height() >= 30*hp ) ) ) )
 			{
@@ -535,7 +537,7 @@ public class slidePage {
 						titleCandidates.add(i);
 					else if(aboveDistance <= 75)
 					{
-						if(list.get(j).get_type() == 1)
+						if(list.get(j).get_type().equals(TextLineType.COMMON_TEXT))
 						{
 							if(aboveDistance < downDistance + 3*hp)
 								titleCandidates.add(i);
@@ -575,7 +577,7 @@ public class slidePage {
 			{
 				for(int i = 0; i < titleCandidates.get(0); i++)
 				{
-					if(list.get(i).get_type() < 0)
+					if(list.get(i).get_type().isNotCommon())
 						continue;
 
 					if( ( list.get(i).get_height() >= (averageHeight + biggest)/2 || list.get(i).get_height() >= 30*hp )
@@ -593,7 +595,7 @@ public class slidePage {
 							}
 							else if (list.get(i-1).get_left() < list.get(i).get_left())
 							{
-								if(list.get(i-1).get_left() + list.get(i-1).get_width() + 100*wp > list.get(i).get_left() && list.get(i-1).get_type() >= 0)
+								if(list.get(i-1).get_left() + list.get(i-1).get_width() + 100*wp > list.get(i).get_left() && list.get(i-1).get_type().isCommon())
 									titleCandidates.add(i-1);
 								else
 									titleCandidates.add(i);
@@ -610,14 +612,14 @@ public class slidePage {
 		{
 			for(int i = 0; i < list.size() && list.get(i).get_top() < 256*hp ; i++)
 			{
-				if(list.get(i).get_type() < 0)
+				if(list.get(i).get_type().isNotCommon())
 					continue;
 
 				if( ( list.get(i).get_height() >= (averageHeight + shortest)/2 || list.get(i).get_height() > 25*hp )
 						&& list.get(i).get_left() < 700*wp && list.get(i).get_top() >= 10*hp )
 				{
 					titleCandidates.clear();
-					if(i > 0 && list.get(i-1).get_bottom() - list.get(i).get_top() < 0 && list.get(i-1).get_type() >= 0)
+					if(i > 0 && list.get(i-1).get_bottom() - list.get(i).get_top() < 0 && list.get(i-1).get_type().isCommon())
 						titleCandidates.add(i-1);
 					else
 						titleCandidates.add(i);
@@ -639,7 +641,7 @@ public class slidePage {
 		{
 			for(int i = titleCandidates.get(titleCandidates.size() - 1) + 1; i < list.size() && titleCandidates.size() < 3; i++)
 			{
-				if(list.get(i).get_type() < 0)
+				if(list.get(i).get_type().isNotCommon())
 					continue;
 
 				int j = titleCandidates.get(titleCandidates.size() - 1);
@@ -753,7 +755,7 @@ public class slidePage {
 		 * a textLines is 'big' enough.	 */
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type() == -2)
+			if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
 				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
@@ -776,13 +778,13 @@ public class slidePage {
 
 		for(int i = 0; i < list.size() && list.get(i).get_top() < 256*hp; i++)
 		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				continue;
 
 			if( ( list.get(i).get_height() >= (averageHeight + shortest)/2 || list.get(i).get_height() > 25*hp )
 					&& list.get(i).get_left() < 700*wp && list.get(i).get_top() >= 10*hp )
 			{
-				if(i > 0 && list.get(i-1).get_bottom() - list.get(i).get_top() < 0 && list.get(i-1).get_type() >= 0
+				if(i > 0 && list.get(i-1).get_bottom() - list.get(i).get_top() < 0 && list.get(i-1).get_type().isCommon()
 						&& list.get(i-1).get_left() < 700*wp && list.get(i-1).get_top() >= 10*hp )
 					titleCandidates.add(i-1);
 				else
@@ -803,7 +805,7 @@ public class slidePage {
 				t.set_top(pta[0]);
 				t.set_height(pta[1]);
 				t.set_bottom(pta[0] + pta[1]);
-				t.set_type(pta[2]);
+				t.set_type(TextLineType.fromInt(pta[2]));
 				boolean centered = false;
 				if(pta[2] == 0)
 				{
@@ -857,7 +859,7 @@ public class slidePage {
 		{
 			for(int i = titleCandidates.get(titleCandidates.size() - 1) + 1; i < list.size() && titleCandidates.size() < 3; i++)
 			{
-				if(list.get(i).get_type() < 0)
+				if(list.get(i).get_type().isNotCommon())
 					continue;
 
 				int j = titleCandidates.get(titleCandidates.size() - 1);
@@ -883,7 +885,7 @@ public class slidePage {
 					t.set_top(pta[0]);
 					t.set_height(pta[1]);
 					t.set_bottom(pta[0] + pta[1]);
-					t.set_type(pta[2]);
+					t.set_type(TextLineType.fromInt(pta[2]));
 					boolean centered = false;
 					if(pta[2] == 0)
 					{
@@ -1417,7 +1419,7 @@ public class slidePage {
 		else
 		{
 			//footline or NoUseString will never be combined, while empty string will definitely be.
-			if(list.get(index).get_type() == 3 || list.get(index).get_type() == -1)
+			if(list.get(index).get_type().equals(TextLineType.FOOTLINE) || list.get(index).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
 				return false;
 			else if(list.get(index).get_text() == "")
 				return true;
@@ -1520,7 +1522,7 @@ public class slidePage {
 
 		if(index <= 0)
 			return false;
-		else if(list.get(index).get_type() == 3 || list.get(index).get_type() == -1)
+		else if(list.get(index).get_type().equals(TextLineType.FOOTLINE) || list.get(index).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
 			return false;
 		else if(list.get(index).get_text().length() == 0 || list.get(index).get_text().contentEquals(" "))
 			return true;
@@ -1979,7 +1981,7 @@ public class slidePage {
 			//remove all those textlines with height 9 or 10
 	 		for(int i = list.size() - 1; i >= 0; i--)
 			{
-				if(list.get(i).get_type() < 0)
+				if(list.get(i).get_type().isNotCommon())
 					list.remove(i);
 			}
 
@@ -2072,15 +2074,12 @@ public class slidePage {
 
 			//remove all those textlines with height 9 or 10
 	 		for(int i = leftTexts.size() - 1; i >= 0; i--)
-			{
-				if(leftTexts.get(i).get_type() < 0)
+				if(leftTexts.get(i).get_type().isNotCommon())
 					leftTexts.remove(i);
-			}
+	 		
 	 		for(int i = rightTexts.size() - 1; i >= 0; i--)
-			{
-				if(rightTexts.get(i).get_type() < 0)
+				if(rightTexts.get(i).get_type().isNotCommon())
 					rightTexts.remove(i);
-			}
 
 			// Do the connection
 			leftTexts = this.connectContinuousTextLineMultiRowsOnly(leftTexts, Gaps, lowCaseStart, extraSignStart);
@@ -2325,10 +2324,8 @@ public class slidePage {
 
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
-		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				list.remove(i);
-		}
 
 		if(list.size() == 0)
 			return result;
@@ -2484,7 +2481,7 @@ public class slidePage {
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type() == 3 && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
+			if(list.get(i).get_type().equals(TextLineType.FOOTLINE) && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
 			{
 				textOutline t = new textOutline(list.get(i).get_text(), 0);
 				result.add(t);
@@ -2599,7 +2596,7 @@ public class slidePage {
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
 		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				list.remove(i);
 		}
 
@@ -2748,7 +2745,7 @@ public class slidePage {
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type() == 3 && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
+			if(list.get(i).get_type().equals(TextLineType.FOOTLINE) && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
 			{
 				textOutline t = new textOutline(list.get(i).get_text(), 0);
 				result.add(t);
@@ -2855,7 +2852,7 @@ public class slidePage {
 		//remove all those textlines with height 9 or 10
  		for(int i = list.size() - 1; i >= 0; i--)
 		{
-			if(list.get(i).get_type() < 0)
+			if(list.get(i).get_type().isNotCommon())
 				list.remove(i);
 		}
 

@@ -30,6 +30,8 @@ import org.xml.sax.SAXException;
 
 import dataStructure.pdfParser;
 import dataStructure.textLine;
+import helper.enums.OCROriginMode;
+import helper.enums.TextLineType;
 
 public class OCRLoader {
 	static ArrayList<textLine> loadFromMySQL(String lecture_id)
@@ -60,18 +62,18 @@ public class OCRLoader {
 				slideNumBase = tempSlideID;
 			tempSlideID -= slideNumBase;
 
-			int intType = -1;
+			TextLineType type = TextLineType.CANNOT_RECOGNIZE;
 			String temp = rs1.getString("type");
 			if (temp.contentEquals("Title"))
-				intType = 1;
+				type = TextLineType.TITLE;
 			else if (temp.contentEquals("Subtitle"))
-				intType = 2;
+				type = TextLineType.SUBTITLE;
 			else if (temp.contentEquals("Footline"))
-				intType = 3;
+				type = TextLineType.FOOTLINE;
 			else
-				intType = 0;
+				type = TextLineType.COMMON_TEXT;
 
-			textLine t = new textLine(tempSlideID + 1, rs1.getString("content"), intType, rs1.getInt("top"),
+			textLine t = new textLine(tempSlideID + 1, rs1.getString("content"), type, rs1.getInt("top"),
 					rs1.getInt("left"), rs1.getInt("width"), rs1.getInt("height"), rs1.getTime("start"));
 
 			if (tempSlideID + 1 > currentSlide) {
@@ -151,7 +153,7 @@ public class OCRLoader {
 				t.set_bottom(t.get_top() + t.get_height());
 				t.set_lastLineWidth(t.get_width());
 				t.set_lastLineLeft(t.get_left());
-				t.set_type(0);
+				t.set_type(TextLineType.COMMON_TEXT);
 				if (!t.get_text().contentEquals(" "))
 					tll.add(t);
 			}
@@ -270,7 +272,7 @@ public class OCRLoader {
 				t.set_bottom(t.get_top() + t.get_height());
 				t.set_lastLineWidth(t.get_width());
 				t.set_lastLineLeft(t.get_left());
-				t.set_type(0);
+				t.set_type(TextLineType.COMMON_TEXT);
 				tll.add(t);
 			}
 		}

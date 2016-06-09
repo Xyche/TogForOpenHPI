@@ -18,8 +18,8 @@ import helper.ArgumentParser;
 import helper.Constants;
 import helper.LoggerSingleton;
 import helper.OCRLoader;
-import helper.OCROriginMode;
 import helper.StaticMethods;
+import helper.enums.OCROriginMode;
 
 public class runTogForOpenHPI {
 

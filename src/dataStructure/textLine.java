@@ -1,6 +1,9 @@
 package dataStructure;
 
 import java.util.*;
+
+import helper.enums.TextLineType;
+
 import java.sql.*;
 import sharedMethods.*;
 
@@ -13,7 +16,7 @@ public class textLine {
 	
 	public textLine(){}
 	
-	public textLine(int slideID, String text, int type, int top, int left, int width, int height, Time time){
+	public textLine(int slideID, String text, TextLineType type, int top, int left, int width, int height, Time time){
 		set_slideID(slideID);
 		set_text(text);
 		set_type(type);
@@ -27,6 +30,7 @@ public class textLine {
 		set_lastLineWidth(width);
 		set_lastLineLeft(left);
 	}
+	
 	
 	/* 'bottom' will be calculated from other parameters, all others derive from DB
 	 * 
@@ -42,7 +46,7 @@ public class textLine {
 	
 	private int _slideID;
 	private String _text;
-	private int _type;
+	private TextLineType _type;
 	private int _top;
 	private int _bottom;
 	private int _left;
@@ -72,11 +76,11 @@ public class textLine {
 		this._text = _text;
 	}
 
-	public int get_type() {
+	public TextLineType get_type() {
 		return _type;
 	}
 
-	public void set_type(int _type) {
+	public void set_type(TextLineType _type) {
 		this._type = _type;
 	}
 
@@ -227,13 +231,13 @@ public class textLine {
 		if(this._text.length() > 8 && count * 1.67 > this._text.length())
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		else if(this._text.length() > 3 && count+1 >= this._text.length())
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		count = 0;
@@ -254,7 +258,7 @@ public class textLine {
 		if(count2 * 2 > words.length)
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		
@@ -263,7 +267,7 @@ public class textLine {
 		if(averageLength < 2 && words.length > 2)
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		else if(averageLength < 2.1)
@@ -290,7 +294,7 @@ public class textLine {
 				if(count2 < words.length / 2 || words.length == 1)
 				{
 					//set_text("#NoUseString#");
-					set_type(-1);
+					set_type(TextLineType.CANNOT_RECOGNIZE);
 					return;
 				}				
 			}
@@ -305,21 +309,21 @@ public class textLine {
 			if(count2 < words.length / 3)
 			{
 				//set_text("#NoUseString#");
-				set_type(-1);
+				set_type(TextLineType.CANNOT_RECOGNIZE);
 				return;
 			}
 		}
 		else if(averageLength > 10 && words.length > 3)
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		
 		if(ai.containTooManySameLetter(this._text))
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		
@@ -447,7 +451,7 @@ public class textLine {
 			else
 			{
 				//set_text("#NoUseString#");
-				set_type(-1);
+				set_type(TextLineType.CANNOT_RECOGNIZE);
 				return;
 			}
 		}
@@ -458,7 +462,7 @@ public class textLine {
 		if(result.length() == 0)
 		{
 			//set_text("#NoUseString#");
-			set_type(-1);
+			set_type(TextLineType.CANNOT_RECOGNIZE);
 			return;
 		}
 		

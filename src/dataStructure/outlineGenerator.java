@@ -24,6 +24,7 @@ import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
 import helper.StaticMethods;
+import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
 public class outlineGenerator {
@@ -220,7 +221,7 @@ public class outlineGenerator {
 				}
 				if (!match) {
 					t.set_count(1);
-					t.set_type(centered ? 1 : 0);
+					t.set_type(centered ? TextLineType.TITLE : TextLineType.COMMON_TEXT);
 					tl2.add(t);
 				}
 			}
@@ -243,7 +244,7 @@ public class outlineGenerator {
 		
 		for (textLine line: tl2)
 			if (line.get_count() > 2 && line.get_count() >= totalPage / divider){
-				int[] pta = { line.get_top(), line.get_bottom() - line.get_top(), line.get_type(), line.get_left() + line.get_width() / 2 };
+				int[] pta = { line.get_top(), line.get_bottom() - line.get_top(), line.get_type().getValue(), line.get_left() + line.get_width() / 2 };
 				this.potentialTitleArea.add(pta);
 				LoggerSingleton.info(String.format("[%d, %d, %s: %d | %d]", pta[0], pta[1], pta[2] == 1 ? "Center" : "Left", pta[3], line.get_count()));
 			}
@@ -340,25 +341,26 @@ public class outlineGenerator {
 	}
 
 	private ArrayList<slidePage> deleteAllUnorganizedTexts(ArrayList<slidePage> sps) {
-		ArrayList<slidePage> old_sps = new ArrayList<>(sps);
-		sps.clear();
-		for (slidePage page: old_sps) {
-			if (page.get_title().length() < 1) {
-				textOutline firstText = page.get_texts().get(0);
-				if (page.get_pageType() >= 0 && firstText.get_hierarchy() == 1) {
-					page.set_title(firstText.get_text());
-					page.get_texts().remove(firstText);
-				} else continue;
+		ArrayList<slidePage> new_sps = new ArrayList<>();
+		for (slidePage page: sps) {
+			textOutline firstText = page.get_texts().get(0);
+			if (page.get_title().length() < 1 && (page.get_pageType() < 0 || firstText.get_hierarchy() != 1))
+				continue;
+			
+			if (page.get_title().length() < 1){
+				page.set_title(firstText.get_text());
+				page.get_texts().remove(firstText);
 			}
+			
 			ArrayList<textOutline> old_texts = new ArrayList<>(page.get_texts()); 
 			page.get_texts().clear();
 			for (textOutline to: old_texts)
 				if (to.get_hierarchy() != 0)
 					page.get_texts().add(to);
 
-			sps.add(page);
+			new_sps.add(page);
 		}
-		return sps;
+		return new_sps;
 	}
 
 	private ArrayList<slidePage> concludeVisualIndexPage(ArrayList<slidePage> sps) {
@@ -553,7 +555,7 @@ public class outlineGenerator {
 					t.set_top(pta[0]);
 					t.set_height(pta[1]);
 					t.set_bottom(pta[0] + pta[1]);
-					t.set_type(pta[2]);
+					t.set_type(TextLineType.fromInt(pta[2]));
 					t.set_left(centered ? pta[3] / 2 : pta[3]);
 					t.set_width(centered ? pta[3] : pageWidth / 3);
 					
