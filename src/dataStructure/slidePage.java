@@ -4,6 +4,7 @@ import java.util.*;
 
 import helper.Constants;
 import helper.LoggerSingleton;
+import helper.enums.SlidePageType;
 import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
@@ -168,7 +169,7 @@ public class slidePage {
 				//Now, DELETE those #NoUseString# based on content
 				for(int i = list.size() - 1; i >= 0; i--)
 				{
-					if(list.get(i).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
+					if(list.get(i).get_type() == TextLineType.CANNOT_RECOGNIZE)
 						list.remove(i);
 				}
 
@@ -194,7 +195,7 @@ public class slidePage {
 				//now, DELETE those #NoUseString# based on size, remain those with height 9 or 10 for middleline detection
 				for(int i = list.size() - 1; i >= 0; i--)
 				{
-					if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
+					if(list.get(i).get_type() == TextLineType.TOO_HIGH)
 						list.remove(i);
 				}
 
@@ -286,7 +287,7 @@ public class slidePage {
 		isSlideWellOrganized();
 	}
 	
-	public slidePage(int pageNum, int pageType, String title, int hierarchy, ArrayList<textOutline> list, int pageWidth, int pageHeight) {
+	public slidePage(int pageNum, SlidePageType pageType, String title, int hierarchy, ArrayList<textOutline> list, int pageWidth, int pageHeight) {
 		//This constructor will be used for a prepared page
 		this.set_PageNum(pageNum);
 		this.set_pageType(pageType);
@@ -321,7 +322,7 @@ public class slidePage {
 	
 
 	private int _pageNum = -1;
-	private int _pageType = -1;
+	private SlidePageType _pageType = SlidePageType.MOST_TEXT_UNORGANIZED;
 	private String _title = "";
 	private int _hierarchy = 0;
 	private ArrayList<textOutline> _texts = new ArrayList<textOutline>();
@@ -343,11 +344,11 @@ public class slidePage {
 		this._pageNum = _pageNum;
 	}
 
-	public int get_pageType() {
+	public SlidePageType get_pageType() {
 		return _pageType;
 	}
 
-	public void set_pageType(int _pageType) {
+	public void set_pageType(SlidePageType _pageType) {
 		this._pageType = _pageType;
 	}
 
@@ -482,7 +483,7 @@ public class slidePage {
 		 * a textLines is 'big' enough.	 */
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
+			if(list.get(i).get_type() == TextLineType.TOO_HIGH)
 				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
@@ -513,7 +514,7 @@ public class slidePage {
 			if(list.get(i).get_type().isNotCommon())
 				continue;
 
-			if(list.get(i).get_type().equals(TextLineType.COMMON_TEXT) && titleCandidates.size() <= 2 &&
+			if(list.get(i).get_type() == TextLineType.COMMON_TEXT && titleCandidates.size() <= 2 &&
 				( list.get(i).get_top() >= 20*hp || ( list.get(i).get_top() >= 10*hp &&
 				( list.get(i).get_height() >= (averageHeight + biggest)/2 || list.get(i).get_height() >= 30*hp ) ) ) )
 			{
@@ -537,7 +538,7 @@ public class slidePage {
 						titleCandidates.add(i);
 					else if(aboveDistance <= 75)
 					{
-						if(list.get(j).get_type().equals(TextLineType.COMMON_TEXT))
+						if(list.get(j).get_type() == TextLineType.COMMON_TEXT)
 						{
 							if(aboveDistance < downDistance + 3*hp)
 								titleCandidates.add(i);
@@ -755,7 +756,7 @@ public class slidePage {
 		 * a textLines is 'big' enough.	 */
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type().equals(TextLineType.TOO_HIGH))
+			if(list.get(i).get_type() == TextLineType.TOO_HIGH)
 				continue;
 			count++;
 			averageHeight += (double)list.get(i).get_height();
@@ -1419,7 +1420,7 @@ public class slidePage {
 		else
 		{
 			//footline or NoUseString will never be combined, while empty string will definitely be.
-			if(list.get(index).get_type().equals(TextLineType.FOOTLINE) || list.get(index).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
+			if(list.get(index).get_type() == TextLineType.FOOTLINE || list.get(index).get_type() == TextLineType.CANNOT_RECOGNIZE)
 				return false;
 			else if(list.get(index).get_text() == "")
 				return true;
@@ -1522,7 +1523,7 @@ public class slidePage {
 
 		if(index <= 0)
 			return false;
-		else if(list.get(index).get_type().equals(TextLineType.FOOTLINE) || list.get(index).get_type().equals(TextLineType.CANNOT_RECOGNIZE))
+		else if(list.get(index).get_type() == TextLineType.FOOTLINE || list.get(index).get_type() == TextLineType.CANNOT_RECOGNIZE)
 			return false;
 		else if(list.get(index).get_text().length() == 0 || list.get(index).get_text().contentEquals(" "))
 			return true;
@@ -2481,7 +2482,7 @@ public class slidePage {
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type().equals(TextLineType.FOOTLINE) && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
+			if(list.get(i).get_type() == TextLineType.FOOTLINE && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
 			{
 				textOutline t = new textOutline(list.get(i).get_text(), 0);
 				result.add(t);
@@ -2745,7 +2746,7 @@ public class slidePage {
 		int last = 0, last2 = 0, last_in_system = -1;
 		for(int i = 0; i < list.size(); i++)
 		{
-			if(list.get(i).get_type().equals(TextLineType.FOOTLINE) && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
+			if(list.get(i).get_type() == TextLineType.FOOTLINE && list.get(list.size()-1).get_top() - list.get(i).get_bottom() <= 0)
 			{
 				textOutline t = new textOutline(list.get(i).get_text(), 0);
 				result.add(t);
@@ -3000,16 +3001,15 @@ public class slidePage {
 
 		if(get_texts().size() == 0)
 		{
-			set_pageType(-2);
-			if(get_title().contentEquals(""))
-				set_pageType(-3);
+			set_pageType(SlidePageType.POSSIBLY_PICTURE_SLIDE);
+			if(get_title().contentEquals("")) set_pageType(SlidePageType.EMPTY);
 			return;
 		}
 
 		if(get_texts().size() <= 2 && get_title().contentEquals(""))
 		{
 			if(get_texts().size() <= 1)
-				set_pageType(-2);
+				set_pageType(SlidePageType.POSSIBLY_PICTURE_SLIDE);
 			return;
 		}
 
@@ -3020,8 +3020,8 @@ public class slidePage {
 			if(t.get_hierarchy() > 0)
 				count++;
 		}
-		if( count > 0 && (double)get_texts().size() / (double)count < 2.0 )
-			set_pageType(0);
+		if( count > 0 && (double)get_texts().size() / (double)count < 2.0 ) 
+			set_pageType(SlidePageType.WELL_ORGANAZIED);
 	}
 
 	public boolean isSamePage(slidePage s)
@@ -3055,7 +3055,7 @@ public class slidePage {
 			//if(this.get_PageNum()==81 && s.get_PageNum()==83)
 				//LoggerSingleton.info(lr + "  " + wr);
 
-			if(this.get_pageType() == -2 || s.get_pageType() == -2)
+			if(this.get_pageType().equals(SlidePageType.POSSIBLY_PICTURE_SLIDE) || s.get_pageType().equals(SlidePageType.POSSIBLY_PICTURE_SLIDE))
 			{
 				if(this.get_title().length() > 0 && this.get_title().contentEquals(s.get_title()) && longer - this.get_title().length() <= 30)
 					return true;

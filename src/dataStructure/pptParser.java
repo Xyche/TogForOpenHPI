@@ -93,7 +93,7 @@ public class pptParser {
 			sp.set_texts(tos);
 			sp.isSlideWellOrganized();
 			
-			if(sp.get_pageType() > -3)
+			if(sp.get_pageType().isNotEmpty())
 				sps.add(sp);
 		}
 		/*

@@ -42,7 +42,7 @@ public class LoggerSingleton{
 			}
 
 			LoggerSingleton.info("PageType: " + page.get_pageType());
-			if (page.get_pageType() >= 0)
+			if (page.get_pageType().isCommon())
 				LoggerSingleton.info("3 Levels: " + page.get_levelCoordinates()[0] + ", " + page.get_levelCoordinates()[1]
 						+ ", " + page.get_levelCoordinates()[2]);
 		}

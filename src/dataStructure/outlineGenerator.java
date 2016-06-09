@@ -24,6 +24,7 @@ import dataStructure.textOutline.counts;
 import helper.Constants;
 import helper.LoggerSingleton;
 import helper.StaticMethods;
+import helper.enums.SlidePageType;
 import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
@@ -300,11 +301,11 @@ public class outlineGenerator {
 
 	private void addInfoToEachText(ArrayList<slidePage> sps) {
 		for(slidePage page: sps){
-			if (page.get_pageType() <= 0) {
+			if (page.get_pageType().isNotSpecial()) {
 				for(textOutline to: page.get_texts())
 					if (to.get_time().before(page.get_startTime()))
 						to.set_time(page.get_startTime());
-			} else if (page.get_pageType() <= 2) {
+			} else if (page.get_pageType().isNotSplitSlide()) {
 				for(textOutline to: page.get_texts())
 					for (slidePage innerPage: sps.subList(sps.indexOf(page) + 1, sps.size()))
 						if (to.get_child() == innerPage.get_PageNum()
@@ -344,7 +345,7 @@ public class outlineGenerator {
 		ArrayList<slidePage> new_sps = new ArrayList<>();
 		for (slidePage page: sps) {
 			textOutline firstText = page.get_texts().get(0);
-			if (page.get_title().length() < 1 && (page.get_pageType() < 0 || firstText.get_hierarchy() != 1))
+			if (page.get_title().length() < 1 && (page.get_pageType().isNotCommon() || firstText.get_hierarchy() != 1))
 				continue;
 			
 			if (page.get_title().length() < 1){
@@ -367,8 +368,8 @@ public class outlineGenerator {
 		int beginPos = 1;
 		for (int i = 0; i < sps.size(); i++) {
 			slidePage page = sps.get(i);
-			if (page.get_pageType() <= 0) continue;
-			else if (page.get_pageType() == 1) {
+			if (page.get_pageType().isNotSpecial()) continue;
+			else if (page.get_pageType() == SlidePageType.INDEX_SLIDE) {
 				int currentSlideNum = page.get_PageNum();
 				if (beginPos < i - 1)
 					sps = concludeTheme(sps, beginPos, i - 1, 3);
@@ -387,7 +388,7 @@ public class outlineGenerator {
 						break;
 					}
 
-			} else if (page.get_pageType() == 2) {
+			} else if (page.get_pageType() == SlidePageType.TAG_SLIDE) {
 				sps = concludeTheme(sps, beginPos, i - 1, 3);
 				isTag = true;
 				break;
@@ -405,7 +406,7 @@ public class outlineGenerator {
 		else {
 			for (slidePage page: sps){
 				int i = sps.indexOf(page);
-				if (page.get_pageType() == 2) {
+				if (page.get_pageType() == SlidePageType.TAG_SLIDE) {
 					sps = findIndexPage(sps, 0, i - 1);
 					for(textOutline currentTo: page.get_texts()){
 						int beginPos = i, endPos = i;
@@ -430,11 +431,11 @@ public class outlineGenerator {
 
 	private int setIsTagAndGetTagPos(ArrayList<slidePage> sps) {
 		isTag = false;
-		for (slidePage page: sps)
-			if (page.get_pageType() == 2) {
-				isTag = true;
+		for (slidePage page: sps){
+			isTag = page.get_pageType() == SlidePageType.TAG_SLIDE;
+			if (isTag)
 				return sps.indexOf(page);
-			}
+		}
 		return 0;
 	}
 
@@ -607,7 +608,7 @@ public class outlineGenerator {
 		ArrayList<slidePage> old_sps = new ArrayList<>(sps);
 		sps.clear();
 		for (slidePage page: old_sps){
-			if (page.get_pageType() <= -3) continue;
+			if (page.get_pageType().isEmpty()) continue;
 			sps.add(page);
 			/**
 			 * Search for similar slides, when found.... If both slides already have
@@ -616,7 +617,7 @@ public class outlineGenerator {
 			 * create a new group for them.
 			 */
 			for(slidePage page2: old_sps.subList(old_sps.indexOf(page) + 1, old_sps.size())){
-				if (page2.get_pageType() <= -3 || !page.isSamePage(page2)) continue;
+				if (page2.get_pageType().isEmpty() || !page.isSamePage(page2)) continue;
 
 				boolean done = false;
 				for(ArrayList<Integer> pageGroup: samePageGroups){
@@ -768,7 +769,7 @@ public class outlineGenerator {
 					break;
 				}
 
-				if (page.get_pageType() == -1) {
+				if (page.get_pageType() == SlidePageType.MOST_TEXT_UNORGANIZED) {
 					int totalLength = 0;
 					for(textOutline outline: page.get_texts())
 						totalLength += outline.get_text().length();
@@ -779,7 +780,7 @@ public class outlineGenerator {
 					} else
 						ave += 1;
 				} else
-					ave -= page.get_pageType();
+					ave -= page.get_pageType().getValue();
 				
 				if (pageIdx + 1 >= sps.size()) continue;
 				slidePage nextPage = sps.get(pageIdx + 1);
@@ -965,11 +966,11 @@ public class outlineGenerator {
 	 */
 	private slidePage combineSameSlides(slidePage a, slidePage b, boolean keepA) {
 
-		if (a.get_pageType() < -1) {
+		if (a.get_pageType().lt(SlidePageType.MOST_TEXT_UNORGANIZED)) {
 			if (keepA)
 				b.set_PageNum(a.get_PageNum());
 			return b;
-		} else if (b.get_pageType() < -1) {
+		} else if (b.get_pageType().lt(SlidePageType.MOST_TEXT_UNORGANIZED)) {
 			if (!keepA)
 				a.set_PageNum(b.get_PageNum());
 			return a;
@@ -987,7 +988,7 @@ public class outlineGenerator {
 		 * length.
 		 */
 		if (a.get_pageType() != b.get_pageType()) {
-			if (a.get_pageType() > b.get_pageType())
+			if (a.get_pageType().gt(b.get_pageType()))
 				useA = true;
 			else
 				useA = false;
@@ -1135,7 +1136,7 @@ public class outlineGenerator {
 		for(slidePage page: sps.subList(beginPosition, endPosition + 1)){
 			int pageIdx = sps.indexOf(page), matchCount = 0, matchPoint = pageIdx + 1;
 			
-			if (pageIdx < nextIdx || page.get_pageType() < 0 || page.get_texts().size() < 3) continue;
+			if (pageIdx < nextIdx || page.get_pageType().isNotCommon() || page.get_texts().size() < 3) continue;
 			/*
 			 * Only well-organized page can be signed as index page. First, go
 			 * over through all the text in a page, try to find a matched title
@@ -1169,7 +1170,7 @@ public class outlineGenerator {
 			// for those page only contains a few matched text, connection will
 			// be retained, but never used.
 			if (matchCount * 2 >= page.get_texts().size()) {
-				page.set_pageType(1);
+				page.set_pageType(SlidePageType.INDEX_SLIDE);
 				IndexPos.add(sps.indexOf(page));
 				nextIdx = matchPoint - 1;
 			}
@@ -1349,7 +1350,7 @@ public class outlineGenerator {
 		}
 
 		for (int i = beginPosition; i <= endPosition; i++) {
-			if (sps.get(i).get_pageType() == 1) {
+			if (sps.get(i).get_pageType() == SlidePageType.INDEX_SLIDE) {
 				String info = "Index Page: " + sps.get(i).get_PageNum() + " < ";
 				for (int j = 0; j < sps.get(i).get_texts().size(); j++) {
 					textOutline to = sps.get(i).get_texts().get(j);
@@ -2101,7 +2102,7 @@ public class outlineGenerator {
 					startPoint = endPoint;
 				}
 
-				target.set_pageType(2);
+				target.set_pageType(SlidePageType.TAG_SLIDE);
 
 				// Now delete all unmatched texts
 
@@ -2153,7 +2154,7 @@ public class outlineGenerator {
 	private ArrayList<slidePage> dealWithSplitPage(ArrayList<slidePage> sps) {
 
 		for (slidePage page: sps)
-			if (page.get_pageType() == 2)
+			if (page.get_pageType() == SlidePageType.TAG_SLIDE)
 				return sps;
 
 		ArrayList<Integer> splitPos = new ArrayList<Integer>();
@@ -2226,7 +2227,7 @@ public class outlineGenerator {
 			visualTagPage.contentCopy(sps.get(splitPos.get(0)));
 			visualTagPage.set_title("Topics");
 			visualTagPage.get_texts().clear();
-			visualTagPage.set_pageType(2);
+			visualTagPage.set_pageType(SlidePageType.TAG_SLIDE);
 
 			for (int i = 0; i < splitPos.size(); i++) {
 				LoggerSingleton.info("Used Split Page: " + sps.get(splitPos.get(i)).get_PageNum() + " - "
@@ -2338,7 +2339,7 @@ public class outlineGenerator {
 	private ArrayList<slidePage> dealWithSectionPage(ArrayList<slidePage> sps) {
 
 		for (slidePage page: sps)
-			if (page.get_pageType() == 2)
+			if (page.get_pageType() == SlidePageType.TAG_SLIDE)
 				return sps;
 
 		String[] tags = { "Part", "Topic", "Theme", "Chapter", "Section" };
@@ -2366,7 +2367,7 @@ public class outlineGenerator {
 			visualTagPage.set_title("Topics");
 			visualTagPage.set_PageNum(visualTagPage.get_PageNum() - 1);
 			visualTagPage.get_texts().clear();
-			visualTagPage.set_pageType(2);
+			visualTagPage.set_pageType(SlidePageType.TAG_SLIDE);
 
 			for (int i = 0; i < sectionPos.size(); i++) {
 				LoggerSingleton.info("Used Section Page: " + sps.get(sectionPos.get(i)).get_PageNum() + " - "
@@ -2596,7 +2597,7 @@ public class outlineGenerator {
 
 			slidePage nsp = new slidePage();
 			nsp.set_title(newTitle);
-			nsp.set_pageType(1);
+			nsp.set_pageType(SlidePageType.INDEX_SLIDE);
 			nsp.set_PageNum(sps.get(firstPos).get_PageNum() - 1);
 			nsp.set_startTime(sps.get(firstPos).get_startTime());
 
@@ -2670,7 +2671,7 @@ public class outlineGenerator {
 
 				slidePage nsp = new slidePage();
 				nsp.set_title(newTitle);
-				nsp.set_pageType(1);
+				nsp.set_pageType(SlidePageType.INDEX_SLIDE);
 				nsp.set_PageNum(sps.get(firstPos).get_PageNum() - 1);
 				nsp.set_startTime(sps.get(firstPos).get_startTime());
 
@@ -2731,7 +2732,7 @@ public class outlineGenerator {
 			slidePage sp = sps.get(i);
 
 			// Page situation 1
-			if (sp.get_pageType() < 1) {
+			if (sp.get_pageType().lt(SlidePageType.INDEX_SLIDE)) {
 				ArrayList<textOutline> temp = new ArrayList<textOutline>();
 				temp = makeTextOutlinesFromOneSlidePage(sp, 0);
 				finalResults.addAll(temp);
@@ -2739,7 +2740,7 @@ public class outlineGenerator {
 				continue;
 			}
 
-			if (sp.get_pageType() == 1) {
+			if (sp.get_pageType() == SlidePageType.INDEX_SLIDE) {
 				// Page situation 2
 				textOutline toTitle = new textOutline(sp.get_title(), 0, 0);
 				toTitle.set_time(sp.get_startTime());
@@ -2794,7 +2795,7 @@ public class outlineGenerator {
 				continue;
 			}
 
-			if (sp.get_pageType() == 2) {
+			if (sp.get_pageType() == SlidePageType.TAG_SLIDE) {
 				int currentPos = i + 1;
 
 				for (int j = 0; j < sp.get_texts().size(); j++) {
@@ -2814,14 +2815,14 @@ public class outlineGenerator {
 							break;
 						else {
 							// Page situation 6
-							if (sps.get(k).get_pageType() < 1) {
+							if (sps.get(k).get_pageType().lt(SlidePageType.INDEX_SLIDE)) {
 								ArrayList<textOutline> temp = new ArrayList<textOutline>();
 								temp = makeTextOutlinesFromOneSlidePage(sps.get(k), 1);
 								finalResults.addAll(temp);
 								LoggerSingleton
 										.info("Page " + sps.get(k).get_PageNum() + " done! It is a tag-common page");
 								currentPos = k + 1;
-							} else if (sps.get(k).get_pageType() == 1) {
+							} else if (sps.get(k).get_pageType() == SlidePageType.INDEX_SLIDE) {
 								// Page situation 7
 								textOutline toTitle = new textOutline(sps.get(k).get_title(), 1, 0);
 								toTitle.set_time(sps.get(k).get_startTime());
