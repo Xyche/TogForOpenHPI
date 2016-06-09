@@ -1,28 +1,22 @@
 package helper.enums;
 
 public enum TextLineType {
-	/* And for type, introduction below:
-	 * -2 : too high text, maybe a combination of several lines, used only in helping locating the title candidates.
-	 * -1 : text cannot be recognized, used only in locating title candidates and calculating the average height.
-	 *  *** these 2 kind above will never be included in the text system, and will be definitely deleted.
-	 *  0 : common text in OCR.
-	 *  1 : 'Title' in OCR.
-	 *  2 : 'Subtitle' in OCR.
-	 *  3 : 'Footline' in OCR.
-	 */
+	
 	/** -3 */
 	INVALID(-3),
-	/** -2 */
+	/** -2 too high text, maybe a combination of several lines, used only in helping locating the title candidates. */
 	TOO_HIGH(-2),
-	/** -1 */
+	/** -1 text cannot be recognized, used only in locating title candidates and calculating the average height. */
+	//  *** these 3 kind above will never be included in the text system, and will be definitely deleted.
+
 	CANNOT_RECOGNIZE(-1),
-	/** 0 */
+	/** 0 common text in OCR.*/
 	COMMON_TEXT(0),
-	/** 1 */
+	/** 1 'Title' in OCR*/
 	TITLE(1),
-	/** 2 */
+	/** 2 'Subtitle' in OCR*/
 	SUBTITLE(2),
-	/** 3 */
+	/** 3 'Footline' in OCR*/
 	FOOTLINE(3);
 
 	int value;
