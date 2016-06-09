@@ -35,7 +35,7 @@ then
   $TOG_EXECUTABLE \
     -slides $PDF \
     -folder $RESULTS_DIR\
-    -log "$(dirname $PDF)/$ID.log"
+    -log "$RESULTS_DIR/$ID.log"
 fi
 
 if [[ ! $NO_EXTRACT ]];
