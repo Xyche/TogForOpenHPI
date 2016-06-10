@@ -8,7 +8,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Time;
-import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,8 +44,8 @@ public abstract class JSONThumbnailsParser {
 	}
 	
 	
-	public static ArrayList<textLine> parse(String file_path) throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
-		ArrayList<textLine> res = new ArrayList<textLine>();
+	public static FilterableList<textLine> parse(String file_path) throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
+		FilterableList<textLine> res = new FilterableList<textLine>();
 		
 		final JSONParser parser = new JSONParser();
 		JSONObjectWrapper content = new JSONObjectWrapper(parser.parse(new InputStreamReader(new FileInputStream(file_path),"UTF-8")));

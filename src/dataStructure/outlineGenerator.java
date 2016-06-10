@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,16 +11,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.TimeZone;
 
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.json.simple.parser.ParseException;
-import org.xml.sax.SAXException;
-
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 
 import dataStructure.textOutline.counts;
 import helper.Constants;
+import helper.FilterableList;
+import helper.FilterableList.FilterFunc;
 import helper.LoggerSingleton;
 import helper.StaticMethods;
 import helper.enums.SlidePageType;
@@ -137,9 +133,8 @@ public class outlineGenerator {
 
 
 	// main generation method
-	public ArrayList<textOutline> generate(ArrayList<textLine> tll, boolean havePPTX, boolean havePDF, String referenceFilePath,
-			boolean changeBBImageNames) throws IOException, InstantiationException, IllegalAccessException,
-					ClassNotFoundException, SQLException, ParserConfigurationException, SAXException, ParseException {
+	public FilterableList<textOutline> generate(FilterableList<textLine> tll, boolean havePPTX, boolean havePDF, String referenceFilePath,
+			boolean changeBBImageNames) throws Exception {
 
 		this.potentialTitleArea.clear();
 		this.potentialHierarchicalGap.clear();
@@ -148,26 +143,26 @@ public class outlineGenerator {
 		if (havePPTX){
 			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages for video stream>");
 			
-			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
+			FilterableList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
 
 			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
 			step3(sps);
 
-			ArrayList<slidePage> sps_pptx = new pptParser().analyzePPTX(referenceFilePath);
+			FilterableList<slidePage> sps_pptx = new pptParser().analyzePPTX(referenceFilePath);
 			LoggerSingleton.show("< RESULT after step 3 (PPTX file)>", sps_pptx);
 
 			return generate(sps, sps_pptx);
 		} else if (havePDF){
 			LoggerSingleton.info("< STEP 2-1: Delete logo which appears in same position of many pages for video stream>");
 			
-			ArrayList<textLine> tll_pdf = new pdfParser().analyzePDF(referenceFilePath); 
+			FilterableList<textLine> tll_pdf = new pdfParser().analyzePDF(referenceFilePath); 
 			LoggerSingleton.info("< STEP 2-2: Delete logo which appears in same position of many pages for PDF file>");
 			tll_pdf = removeLogo(tll_pdf);
 
-			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
+			FilterableList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3-1: Find title and load in hierarchy for video stream>");
 			LoggerSingleton.show("< RESULT after step 3 (video stream)>", sps);
 
-			ArrayList<slidePage> sps_pdf = generateSlidePageStructure(tll_pdf, "< STEP 3-2: Find title and load in hierarchy for PDF file>");
+			FilterableList<slidePage> sps_pdf = generateSlidePageStructure(tll_pdf, "< STEP 3-2: Find title and load in hierarchy for PDF file>");
 
 			LoggerSingleton.show("< RESULT after step 3 (PDF file)>", sps_pdf);
 			step3(sps_pdf);
@@ -176,7 +171,7 @@ public class outlineGenerator {
 		} else {
 			LoggerSingleton.info("< STEP 2: Delete logo which appears in same position of many pages >");
 
-			ArrayList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3: Find title and load in hierarchy >");
+			FilterableList<slidePage> sps = generateSlidePageStructure(tll, "< STEP 3: Find title and load in hierarchy >");
 
 			LoggerSingleton.show("< RESULT after step 3 >", sps);
 			step3(sps);
@@ -318,11 +313,11 @@ public class outlineGenerator {
 
 	}
 
-	private ArrayList<slidePage> generateSlidePageStructure(ArrayList<textLine> tll, String text) throws IOException{
+	private FilterableList<slidePage> generateSlidePageStructure(ArrayList<textLine> tll, String text) throws IOException{
 		LoggerSingleton.info(text);
 		
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
-		ArrayList<slidePage> sps = new ArrayList<slidePage>();
+		FilterableList<slidePage> sps = new FilterableList<slidePage>();
 		int tempPageNum = 1;
 		
 		for (textLine t : tll)
@@ -341,8 +336,8 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private ArrayList<slidePage> deleteAllUnorganizedTexts(ArrayList<slidePage> sps) {
-		ArrayList<slidePage> new_sps = new ArrayList<>();
+	private FilterableList<slidePage> deleteAllUnorganizedTexts(FilterableList<slidePage> sps) {
+		FilterableList<slidePage> new_sps = new FilterableList<>();
 		for (slidePage page: sps) {
 			textOutline firstText = page.get_texts().get(0);
 			if (page.get_title().length() < 1 && (page.get_pageType().isNotCommon() || firstText.get_hierarchy() != 1))
@@ -364,7 +359,7 @@ public class outlineGenerator {
 		return new_sps;
 	}
 
-	private ArrayList<slidePage> concludeVisualIndexPage(ArrayList<slidePage> sps) {
+	private FilterableList<slidePage> concludeVisualIndexPage(FilterableList<slidePage> sps) {
 		int beginPos = 1;
 		for (int i = 0; i < sps.size(); i++) {
 			slidePage page = sps.get(i);
@@ -400,7 +395,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private ArrayList<slidePage> searchIndexPage(ArrayList<slidePage> sps) {
+	private FilterableList<slidePage> searchIndexPage(FilterableList<slidePage> sps) throws Exception {
 		if (!isTag)
 			return findIndexPage(sps, 0, sps.size() - 1);
 		else {
@@ -420,7 +415,6 @@ public class outlineGenerator {
 								endPos = k;
 								break;
 							}
-
 						sps = findIndexPage(sps, beginPos, endPos);
 					}
 				}
@@ -445,18 +439,18 @@ public class outlineGenerator {
 		analyzeHerarchicalGap(sps);
 	}
 	
-	private ArrayList<textOutline> generate(ArrayList<slidePage> sps) {
+	private FilterableList<textOutline> generate(FilterableList<slidePage> sps) throws Exception {
 		ArrayList<ArrayList<Integer>> samePageGroups = findSamePages(sps);
 		LoggerSingleton.show("< STEP 4: Remove repeated and empty pages >", samePageGroups);
 
 
-		sps = removeRepeatedPages(sps, samePageGroups);
+		sps = removeRepeatedPages(sps, samePageGroups).notNullObjects();
 		samePageGroups = findSamePages(sps);
 		LoggerSingleton.show("< STEP 5: Remove live show >", samePageGroups);
-		sps = removeLiveShow(sps, samePageGroups);
+		sps = removeLiveShow(sps, samePageGroups).notNullObjects();
 
 		LoggerSingleton.info("< STEP 6: Combine continuous slides >");
-		sps = combineContinuedSlides(sps, 0, sps.size() - 1);
+		sps = combineContinuedSlides(sps, 0, sps.size() - 1).notNullObjects();
 		LoggerSingleton.show("< RESULT after step 6 >", sps);
 
 		samePageGroups = findSamePages(sps);
@@ -474,7 +468,7 @@ public class outlineGenerator {
 
 		int tagPos = setIsTagAndGetTagPos(sps);
 
-		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size()));
+		sps = combineContinuedSlides(sps, 0, (isTag ? tagPos : sps.size())).notNullObjects();
 
 		LoggerSingleton.info("< STEP 10: Search index page >");
 		sps = searchIndexPage(sps);
@@ -490,7 +484,7 @@ public class outlineGenerator {
 		return makeFinalTextOutlinesFromSlidePages(sps);
 	}
 	
-	private ArrayList<textOutline> generate(ArrayList<slidePage> sps, ArrayList<slidePage> other) throws IOException{
+	private FilterableList<textOutline> generate(FilterableList<slidePage> sps, FilterableList<slidePage> other) throws Exception{
 		sps = synchronizeVideoToFile(sps, other);
 		LoggerSingleton.show("< RESULT after step 3.5: synchronization >", sps);
 		writeSyncFile(sps);
@@ -511,10 +505,10 @@ public class outlineGenerator {
 		
 	}
 
-	private ArrayList<textLine> removeLogo(ArrayList<textLine> inputLines) {
+	private FilterableList<textLine> removeLogo(FilterableList<textLine> inputLines) throws Exception {
 		if(inputLines.isEmpty()) return inputLines;
 		int totalPage = inputLines.get(inputLines.size() - 1).get_slideID();
-		ArrayList<textLine> tl2 = new ArrayList<textLine>();
+		final ArrayList<textLine> tl2 = new ArrayList<textLine>();
 		for (textLine line: inputLines) {
 			boolean match = false;
 			for (textLine other: tl2)
@@ -586,14 +580,18 @@ public class outlineGenerator {
 							t.get_count(), t.get_text(), t.get_top(),
 							t.get_left(), t.get_width(), t.get_height()}));
 		
-		ArrayList<textLine> result = new ArrayList<>(inputLines);
-		for (textLine inputLine: Lists.reverse(inputLines))
-			for (textLine filteredLine: tl2)
-				if (filteredLine.isSamePosition(inputLine, pageWidth, pageHeight, initial)) {
-					result.remove(inputLine);
-					break;
-				}
-		return result;
+		return inputLines.filter(new FilterFunc<Boolean, textLine>() {
+			@Override
+			public Boolean call() { return true; }
+
+			@Override
+			public Boolean call(textLine inputLine) {
+				for (textLine filteredLine: tl2)
+					if (filteredLine.isSamePosition(inputLine, pageWidth, pageHeight, initial))
+						return false;
+				return true;
+			}
+		});
 	}
 
 	// old methods bellow
@@ -601,22 +599,28 @@ public class outlineGenerator {
 	 * In this function, totally empty slides will be deleted and similar
 	 * slides will be found out and saved in group, to be further dealt with.
 	 * Finally bubble-reorder each of the similar slide groups.
+	 * @throws Exception 
 	 */
-	private ArrayList<ArrayList<Integer>> findSamePages(ArrayList<slidePage> sps) {
+	private ArrayList<ArrayList<Integer>> findSamePages(FilterableList<slidePage> sps) throws Exception {
 
 		ArrayList<ArrayList<Integer>> samePageGroups = new ArrayList<ArrayList<Integer>>();
-		ArrayList<slidePage> old_sps = new ArrayList<>(sps);
-		sps.clear();
-		for (slidePage page: old_sps){
-			if (page.get_pageType().isEmpty()) continue;
-			sps.add(page);
+		
+		sps = sps.filter(new FilterFunc<Boolean, slidePage>() {
+			@Override
+			public Boolean call(slidePage page) { return page.get_pageType().isNotEmpty(); }
+
+			@Override
+			public Boolean call() { return true; }
+		});
+		
+		for (slidePage page: sps){
 			/**
 			 * Search for similar slides, when found.... If both slides already have
 			 * been in a group, skip it. If only 1 slides exists in a
 			 * group, add the 2nd slide in. If both slides haven't in a group,
 			 * create a new group for them.
 			 */
-			for(slidePage page2: old_sps.subList(old_sps.indexOf(page) + 1, old_sps.size())){
+			for(slidePage page2: sps.subList(sps.indexOf(page) + 1, sps.size())){
 				if (page2.get_pageType().isEmpty() || !page.isSamePage(page2)) continue;
 
 				boolean done = false;
@@ -654,8 +658,8 @@ public class outlineGenerator {
 	}
 
 	
-	private ArrayList<slidePage> removeRepeatedPages(ArrayList<slidePage> sps,
-			ArrayList<ArrayList<Integer>> samePageGroups) {
+	private FilterableList<slidePage> removeRepeatedPages(FilterableList<slidePage> sps,
+			ArrayList<ArrayList<Integer>> samePageGroups){
 		/*
 		 * Remove those 'logically' repeated slides from the slides series such
 		 * as : ABAB( to AB ) , ABCBABC( to ABC ) AABBB( to AB )
@@ -697,7 +701,7 @@ public class outlineGenerator {
 		}
 		LoggerSingleton.info(info);
 
-		return StaticMethods.notNullObjects(sps);
+		return sps;
 	}
 	
 
@@ -707,8 +711,9 @@ public class outlineGenerator {
 	 * be treated as LiveShow and deleted from the data structure.
 	 *
 	 * Re-order the same page pairs first, treat the shorter pairs first.
+	 * @throws Exception 
 	 */
-	private ArrayList<slidePage> removeLiveShow(ArrayList<slidePage> sps, ArrayList<ArrayList<Integer>> samePageGroups) {
+	private FilterableList<slidePage> removeLiveShow(FilterableList<slidePage> sps, ArrayList<ArrayList<Integer>> samePageGroups){
 
 		ArrayList<int[]> pairs = new ArrayList<int[]>();
 		for (ArrayList<Integer> pageGroup: samePageGroups ){
@@ -816,7 +821,7 @@ public class outlineGenerator {
 			}
 		}
 
-		return StaticMethods.notNullObjects(sps);
+		return sps;
 	}
 	
 
@@ -825,8 +830,9 @@ public class outlineGenerator {
 	 * gathered together as a single, large slide. And the title of the new
 	 * slide will use the best recognized one from all the old slides
 	 * included, and delete the potential number such as (1) or (2/3).
+	 * @throws Exception 
 	 */
-	public ArrayList<slidePage> combineContinuedSlides(ArrayList<slidePage> sps, int start, int end) {
+	public FilterableList<slidePage> combineContinuedSlides(FilterableList<slidePage> sps, int start, int end){
 
 		for (slidePage page: sps.subList(start, end)){
 			if(page == null) continue;
@@ -934,7 +940,7 @@ public class outlineGenerator {
 
 		}
 
-		return StaticMethods.notNullObjects(sps);
+		return sps;
 	}
 
 
@@ -1125,8 +1131,9 @@ public class outlineGenerator {
 	 * the title will be created by the parameter "child" and "childEnd" of
 	 * the textOutline. And unmatched text in the index page will be
 	 * removed.
+	 * @throws Exception 
 	 */
-	private ArrayList<slidePage> findIndexPage(ArrayList<slidePage> sps, int beginPosition, int endPosition) {
+	private FilterableList<slidePage> findIndexPage(FilterableList<slidePage> sps, int beginPosition, int endPosition) throws Exception {
 		if (endPosition <= beginPosition)
 			return sps;
 		LoggerSingleton.info("Searching Index Page in << " + sps.get(beginPosition).get_PageNum() + " "
@@ -1196,7 +1203,7 @@ public class outlineGenerator {
 			Integer nextPos = IndexPos.get(posIdx + 1);
 			slidePage page = sps.get(pos), currentPage = sps.get(currentPos);
 			boolean isLast = posIdx == IndexPos.size() - 1;
-			ArrayList<textOutline> outlines = page.get_texts();
+			FilterableList<textOutline> outlines = new FilterableList<textOutline>(page.get_texts());
 			
 			for (textOutline outline: outlines) {
 				int outlineIdx = outlines.indexOf(outline);
@@ -1346,7 +1353,7 @@ public class outlineGenerator {
 					outline.set_childEnd(last);
 				}
 			}
-			page.set_texts(StaticMethods.notNullObjects(outlines));
+			page.set_texts(outlines.notNullObjects());
 		}
 
 		for (int i = beginPosition; i <= endPosition; i++) {
@@ -1365,7 +1372,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private ArrayList<slidePage> dealWithTagPage(ArrayList<slidePage> sps,
+	private FilterableList<slidePage> dealWithTagPage(FilterableList<slidePage> sps,
 			ArrayList<ArrayList<Integer>> samePageGroups) {
 		/*
 		 * TagPage is those appears many time indicating starting a new topic It
@@ -2151,7 +2158,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private ArrayList<slidePage> dealWithSplitPage(ArrayList<slidePage> sps) {
+	private FilterableList<slidePage> dealWithSplitPage(FilterableList<slidePage> sps) {
 
 		for (slidePage page: sps)
 			if (page.get_pageType() == SlidePageType.TAG_SLIDE)
@@ -2336,7 +2343,7 @@ public class outlineGenerator {
 		return false;
 	}
 
-	private ArrayList<slidePage> dealWithSectionPage(ArrayList<slidePage> sps) {
+	private FilterableList<slidePage> dealWithSectionPage(FilterableList<slidePage> sps) {
 
 		for (slidePage page: sps)
 			if (page.get_pageType() == SlidePageType.TAG_SLIDE)
@@ -2458,7 +2465,7 @@ public class outlineGenerator {
 		return false;
 	}
 
-	private ArrayList<slidePage> concludeTheme(ArrayList<slidePage> sps, int beginPos, int endPos, int limit) {
+	private FilterableList<slidePage> concludeTheme(FilterableList<slidePage> sps, int beginPos, int endPos, int limit) {
 		/*
 		 * This function is used to create a virtual Index Page for a group of
 		 * slides sharing some keywords in their titles. The whole process will
@@ -2709,7 +2716,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private ArrayList<textOutline> makeFinalTextOutlinesFromSlidePages(ArrayList<slidePage> sps) {
+	private FilterableList<textOutline> makeFinalTextOutlinesFromSlidePages(FilterableList<slidePage> sps) {
 		/*
 		 * In this function, all texts from all slide will be reorganized
 		 * together as the output.
@@ -2726,7 +2733,7 @@ public class outlineGenerator {
 		 * a under-tag Index page sharing a sub text. -- hierarchy 3, that sub
 		 * text will be hierarchy 2
 		 */
-		ArrayList<textOutline> finalResults = new ArrayList<textOutline>();
+		FilterableList<textOutline> finalResults = new FilterableList<textOutline>();
 
 		for (int i = 0; i < sps.size(); i++) {
 			slidePage sp = sps.get(i);
@@ -2913,7 +2920,7 @@ public class outlineGenerator {
 	}
 
 	@SuppressWarnings("unused")
-	private ArrayList<slidePage> synchronizeVideoAndFile(ArrayList<slidePage> sps, ArrayList<slidePage> sps_f) {
+	private FilterableList<slidePage> synchronizeVideoAndFile(FilterableList<slidePage> sps, FilterableList<slidePage> sps_f) {
 		LoggerSingleton.info("Sychronization: video-" + sps.size() + ", file-" + sps_f.size());
 
 		algorithmInterface ai = new algorithmInterface();
@@ -3160,7 +3167,7 @@ public class outlineGenerator {
 	}
 
 	@SuppressWarnings("serial")
-	private ArrayList<slidePage> synchronizeVideoToFile(ArrayList<slidePage> sps, ArrayList<slidePage> sps_f) {
+	private FilterableList<slidePage> synchronizeVideoToFile(FilterableList<slidePage> sps, FilterableList<slidePage> sps_f) {
 		LoggerSingleton.info("Sychronization: video-" + sps.size() + ", file-" + sps_f.size());
 
 		algorithmInterface ai = new algorithmInterface();

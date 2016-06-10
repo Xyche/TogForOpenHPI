@@ -8,18 +8,20 @@ import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 
+import helper.FilterableList;
+
 
 public class pptParser {
 	
 	public pptParser() {}
 	
-	public ArrayList<slidePage> analyzePPTX(String fileName) throws IOException
+	public FilterableList<slidePage> analyzePPTX(String fileName) throws IOException
 	{
 		XMLSlideShow ppt = new XMLSlideShow(new FileInputStream(fileName));
 		XSLFSlide[] slides = ppt.getSlides();
 		//LoggerSingleton.info(slides.length);
 		
-		ArrayList<slidePage> sps = new ArrayList<slidePage>();
+		FilterableList<slidePage> sps = new FilterableList<slidePage>();
 		
 		for(int x = 0; x < slides.length; x++)
 		{

@@ -1,21 +1,16 @@
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.*;
 import java.util.*;
 
 import org.apache.commons.cli.*;
-import org.json.simple.parser.ParseException;
-
-import javax.xml.parsers.*;
-
-import org.xml.sax.SAXException;
 
 import com.google.common.base.Joiner;
 
 import dataStructure.*;
 import helper.ArgumentParser;
 import helper.Constants;
+import helper.FilterableList;
 import helper.LoggerSingleton;
 import helper.OCRLoader;
 import helper.StaticMethods;
@@ -25,8 +20,7 @@ public class runTogForOpenHPI {
 
 	private static final int localTimeZoneOffset = TimeZone.getDefault().getRawOffset();
 
-	public static void main(String[] args) throws SQLException, ParserConfigurationException, SAXException, IOException,
-			InstantiationException, IllegalAccessException, ClassNotFoundException, ParseException {
+	public static void main(String[] args) throws Exception {
 		Options opt = ArgumentParser.defineCLI();
 		CommandLine cmd = ArgumentParser.parseCLI(opt, args);
 		if (cmd == null)
@@ -52,7 +46,7 @@ public class runTogForOpenHPI {
 		LoggerSingleton.setUp(cmd.getOptionValue(ArgumentParser.LOGGER_KEY,
 				StaticMethods.joinPath(workingFolder, lecture_id + ".log")));
 
-		ArrayList<textLine> tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
+		FilterableList<textLine> tll = OCRLoader.loadOcrResults(OCR_Origin, workingFolder, lecture_id, localTimeZoneOffset, changeBBImageNames);
 
 		LoggerSingleton.info("< STEP 1: Loading from Database >");
 		for (textLine t: tll)

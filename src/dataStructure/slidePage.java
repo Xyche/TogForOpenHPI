@@ -4851,94 +4851,93 @@ public class slidePage {
 
 	private File get_tog_stats_file(){
 		File f = new File(Constants.DEFAULT_TOG_STATS);
-		if(!f.canWrite())
-			f = new File("tog_stats.txt");
+		if(!f.canWrite()) f = new File("tog_stats.txt");
 		
 		return f;
 	}
 	
-// 	private boolean _onlyForStats_1(int a, int b)
-//	{
-//		//this function will only be used for gathering stats, to judge whether the two input slides are IN-FACT-BY-HUMAN-EYE the same.
-//
-//		ArrayList<int[]> para = new ArrayList<int[]>();
-//		para.clear();
-//
-//		int x1[] = {2,8};
-//		para.add(x1);
-//
-//		int x2[] = {15,16,18,20,22,24};
-//		para.add(x2);
-//
-//		int x3[] = {17,19,21,23,25};
-//		para.add(x3);
-//
-//		int x4[] = {28,34};
-//		para.add(x4);
-//
-//		int x5[] = {29,31,33,35};
-//		para.add(x5);
-//
-//		int x6[] = {30,32,36};
-//		para.add(x6);
-//
-//		int x7[] = {37,38,40};
-//		para.add(x7);
-//
-//		int x8[] = {39,41,43,45};
-//		para.add(x8);
-//
-//		int x9[] = {58,60,62};
-//		para.add(x9);
-//
-//		int x91[] = {59,61,63};
-//		para.add(x91);
-//
-//		int x10[] = {47,48,49,50,52,54,56};
-//		para.add(x10);
-//
-//		int x11[] = {51,53,55,57,65};
-//		para.add(x11);
-//
-//		int x12[] = {74,76,77};
-//		para.add(x12);
-//
-//		int x13[] = {75,78};
-//		para.add(x13);
-//
-//		int x14[] = {81,83};
-//		para.add(x14);
-//
-//		int x14a[] = {84,85};
-//		para.add(x14a);
-//
-//		int x15[] = {42,44,88};
-//		para.add(x15);
-//		int match=-1, order=-1;
-//		for(int i = 0; i< para.size(); i++)
-//		{
-//			int temp[] = para.get(i);
-//			for(int j = 0; j < temp.length; j++)
-//			{
-//				if(a == temp[j])
-//				{
-//					match = i;
-//					order = j;
-//				}
-//
-//			}
-//		}
-//
-//		if(match >= 0)
-//		{
-//			int temp[] = para.get(match);
-//			for(int j = order+1; j<temp.length; j++)
-//				if(b == temp[j])
-//					return true;
-//		}
-//
-//		return false;
-//	}*/
+/* 	private boolean _onlyForStats_1(int a, int b)
+	{
+		//this function will only be used for gathering stats, to judge whether the two input slides are IN-FACT-BY-HUMAN-EYE the same.
+
+		ArrayList<int[]> para = new ArrayList<int[]>();
+		para.clear();
+
+		int x1[] = {2,8};
+		para.add(x1);
+
+		int x2[] = {15,16,18,20,22,24};
+		para.add(x2);
+
+		int x3[] = {17,19,21,23,25};
+		para.add(x3);
+
+		int x4[] = {28,34};
+		para.add(x4);
+
+		int x5[] = {29,31,33,35};
+		para.add(x5);
+
+		int x6[] = {30,32,36};
+		para.add(x6);
+
+		int x7[] = {37,38,40};
+		para.add(x7);
+
+		int x8[] = {39,41,43,45};
+		para.add(x8);
+
+		int x9[] = {58,60,62};
+		para.add(x9);
+
+		int x91[] = {59,61,63};
+		para.add(x91);
+
+		int x10[] = {47,48,49,50,52,54,56};
+		para.add(x10);
+
+		int x11[] = {51,53,55,57,65};
+		para.add(x11);
+
+		int x12[] = {74,76,77};
+		para.add(x12);
+
+		int x13[] = {75,78};
+		para.add(x13);
+
+		int x14[] = {81,83};
+		para.add(x14);
+
+		int x14a[] = {84,85};
+		para.add(x14a);
+
+		int x15[] = {42,44,88};
+		para.add(x15);
+		int match=-1, order=-1;
+		for(int i = 0; i< para.size(); i++)
+		{
+			int temp[] = para.get(i);
+			for(int j = 0; j < temp.length; j++)
+			{
+				if(a == temp[j])
+				{
+					match = i;
+					order = j;
+				}
+
+			}
+		}
+
+		if(match >= 0)
+		{
+			int temp[] = para.get(match);
+			for(int j = order+1; j<temp.length; j++)
+				if(b == temp[j])
+					return true;
+		}
+
+		return false;
+	}*/
 
 
 

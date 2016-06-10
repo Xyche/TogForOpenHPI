@@ -2,7 +2,6 @@ package helper;
 
 import java.io.File;
 import java.sql.Time;
-import java.util.ArrayList;
 import java.util.TimeZone;
 
 import com.google.common.base.Joiner;
@@ -13,11 +12,6 @@ public abstract class StaticMethods {
 		return Joiner.on(File.separator).join(parts);		
 	}
 	
-	public static <T> ArrayList<T> notNullObjects(ArrayList<T> list){
-		ArrayList<T> result = new ArrayList<>();
-		for(T obj: list) if(obj != null) result.add(obj);
-		return result;
-	}
 
 	public static boolean isInSimilarPosition(int pos1, int pos2, int length1, int length2) {
 		int maxLength = Math.max(length1, length2);

@@ -34,10 +34,10 @@ import helper.enums.OCROriginMode;
 import helper.enums.TextLineType;
 
 public class OCRLoader {
-	static ArrayList<textLine> loadFromMySQL(String lecture_id)
+	static FilterableList<textLine> loadFromMySQL(String lecture_id)
 			throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException {
 
-		ArrayList<textLine> tll = new ArrayList<textLine>();
+		FilterableList<textLine> tll = new FilterableList<textLine>();
 		ArrayList<textLine> tl2 = new ArrayList<textLine>();
 
 		String url = "jdbc:mysql://localhost/ak?user=Xyche&password=123&useUnicode=true&characterEncoding=8859_1";
@@ -103,10 +103,10 @@ public class OCRLoader {
 		return tll;
 	}
 
-	static ArrayList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id, boolean changeBBImageNames)
+	static FilterableList<textLine> loadFromTeleTaskXML(String workingFolder, String lecture_id, boolean changeBBImageNames)
 			throws ParserConfigurationException, SAXException, IOException {
 
-		ArrayList<textLine> tll = new ArrayList<textLine>();
+		FilterableList<textLine> tll = new FilterableList<textLine>();
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
@@ -204,9 +204,9 @@ public class OCRLoader {
 		return tll;
 	}
 
-	static ArrayList<textLine> loadFromACMXML(String lecture_id)
+	static FilterableList<textLine> loadFromACMXML(String lecture_id)
 			throws ParserConfigurationException, SAXException, IOException {
-		ArrayList<textLine> tll = new ArrayList<textLine>();
+		FilterableList<textLine> tll = new FilterableList<textLine>();
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document doc = builder
@@ -291,10 +291,10 @@ public class OCRLoader {
 
 	}
 
-	static ArrayList<textLine> loadFromJSON(String workingFolder)
+	static FilterableList<textLine> loadFromJSON(String workingFolder)
 			throws UnsupportedEncodingException, FileNotFoundException, IOException, ParseException {
 
-		ArrayList<textLine> tll = JSONThumbnailsParser
+		FilterableList<textLine> tll = JSONThumbnailsParser
 				.parse(StaticMethods.joinPath(workingFolder, "thumbnails.json"));
 
 		System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
@@ -324,7 +324,7 @@ public class OCRLoader {
 		return tll;
 	}
 
-	public static ArrayList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id,
+	public static FilterableList<textLine> loadOcrResults(OCROriginMode OCR_Origin, String workingFolder, String lecture_id,
 			int localTimeZoneOffset, boolean changeBBImageNames)
 					throws SQLException, ParserConfigurationException, SAXException, IOException,
 					InstantiationException, IllegalAccessException, ClassNotFoundException, ParseException {
@@ -343,6 +343,6 @@ public class OCRLoader {
 
 		}
 
-		return new ArrayList<>();
+		return new FilterableList<>();
 	} 
 }

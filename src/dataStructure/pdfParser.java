@@ -3,7 +3,6 @@ package dataStructure;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Time;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -13,6 +12,7 @@ import org.apache.pdfbox.util.PDFTextStripper;
 import org.apache.pdfbox.util.TextPosition;
 
 import helper.Constants;
+import helper.FilterableList;
 import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
 
@@ -26,14 +26,14 @@ public class pdfParser extends PDFTextStripper{
         super.setSortByPosition(true);
     }
 	
-	public ArrayList<textLine> analyzePDF(String fileName) throws IOException
+	public FilterableList<textLine> analyzePDF(String fileName) throws IOException
 	{
 		PDDocument pdf = PDDocument.load(new File(fileName));
 		//System.out.println(pdf.getNumberOfPages());
 		pdfParser pdfStripper = new pdfParser();
 		
 		List<?> allPages = pdf.getDocumentCatalog().getAllPages();
-		ArrayList<textLine> tls = new ArrayList<textLine>();
+		FilterableList<textLine> tls = new FilterableList<textLine>();
 		
 		
 		for(int k = 0; k < allPages.size(); k++)
