@@ -1364,34 +1364,32 @@ public class slidePage {
 				currentChar = 'a';
 
 
-			if (lowCaseStart && (Character.isLowerCase(prevChar) || Character.isDigit(prevChar)) && Character.isUpperCase(currentChar))
+			if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isUpperCase(currentChar))
+				p3 = -5;
+			else if (!lowCaseStart && (
+					Character.isDigit(prevChar) && Character.isUpperCase(currentChar) ||
+					Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar)))
+				p3 = -4;
+			else if (lowCaseStart && Character.isUpperCase(currentChar))
+				p3 = -2;
+			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isDigit(currentChar))
 				p3 = -2;
 			else if (lowCaseStart && (Character.isLowerCase(prevChar) || Character.isDigit(prevChar)) && !Character.isUpperCase(currentChar))
 				p3 = -1;
-			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
-				p3 = -2;
-			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
-				p3 = 1;
-			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isDigit(currentChar))
-				p3 = 0;
-			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
-				p3 = 2;
-			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
-				p3 = 1;
-			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
-				p3 = -4;
-			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
-				p3 = 1;
-			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isDigit(currentChar))
-				p3 = 0;
-			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
-				p3 = -4;
 			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isLowerCase(currentChar))
 				p3 = -1;
-			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isDigit(currentChar))
-				p3 = -2;
-			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isUpperCase(currentChar))
-				p3 = -5;
+			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isDigit(currentChar))
+				p3 = 0;
+			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isDigit(currentChar))
+				p3 = 0;
+			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
+				p3 = 1;
+			else if (!lowCaseStart && (
+					Character.isUpperCase(prevChar) && Character.isDigit(currentChar) ||
+					Character.isDigit(prevChar) && Character.isLowerCase(currentChar)))
+				p3 = 1;
+			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
+				p3 = 2;
 
 
 
