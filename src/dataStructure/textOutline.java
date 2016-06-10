@@ -90,28 +90,31 @@ public class textOutline {
 
 	public static counts count(List<textOutline> values) {
 		counts c = new counts();
-		for (textOutline text : values) {
-			if (text.get_child() == 0)
+		for (textOutline outline : values) {
+			if (outline.get_child() == 0)
 				continue;
 
-			if (text.get_child() == 1)
+			if (outline.get_child() == 1)
 				c.count1++;
 			else
 				c.count2++;
 
-			char firstChar = text.get_text().charAt(0), secondChar = text.get_text().charAt(1),
-					thirdChar = text.get_text().charAt(2);
+			String text = outline.get_text();
+			char 
+				firstChar = text.isEmpty() 		? ' ' : text.charAt(0), 
+				secondChar = text.length() < 2 	? ' ' : text.charAt(1), 
+				thirdChar = text.length() < 3 	? ' ' : text.charAt(2);
 
 			if (Character.isLowerCase(firstChar))
-				if (text.get_text().length() > 3 && Character.isWhitespace(secondChar)
+				if (outline.get_text().length() > 3 && Character.isWhitespace(secondChar)
 						&& !Character.isUpperCase(thirdChar))
-					if (text.get_child() == 1)
+					if (outline.get_child() == 1)
 						c.count1low++;
 					else
 						c.count2low++;
 
-			if (text.get_text().length() > 3 && Character.isWhitespace(secondChar))
-				if (text.get_child() == 1)
+			if (outline.get_text().length() > 3 && Character.isWhitespace(secondChar))
+				if (outline.get_child() == 1)
 					c.count1dot++;
 				else
 					c.count2dot++;

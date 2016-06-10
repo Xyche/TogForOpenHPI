@@ -3,6 +3,8 @@ package dataStructure;
 import java.util.*;
 
 import helper.Constants;
+import helper.FilterableList;
+import helper.FilterableList.FilterFunc;
 import helper.LoggerSingleton;
 import helper.enums.SlidePageType;
 import helper.enums.TextLineType;
@@ -21,7 +23,7 @@ public class slidePage {
 	public slidePage() {
 	}
 
-	public slidePage(ArrayList<textLine> list, outlineGenerator og) throws IOException {
+	public slidePage(FilterableList<textLine> list, outlineGenerator og) throws IOException {
 		if (og.isInitial())
 			init(list, og.get_pageWidth(), og.get_pageHeight());
 		else
@@ -54,9 +56,8 @@ public class slidePage {
 		return textHeightAverage /= textLines.size();
 	}
 	
-	private void init(ArrayList<textLine> textLines, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea,
-			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID)
-					throws IOException {
+	private void init(FilterableList<textLine> textLines, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea,
+			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID) throws IOException{
 		// This constructor will be used for a raw page: common use
 
 		this.set_pageWidth(pageWidth);
@@ -137,28 +138,30 @@ public class slidePage {
 
 		// Next, find the title from texts and delete the textlines for title
 		for (int i: seekTitleWithPTA(textLines, potentialTitleArea)) 
-			textLines.remove(i);
+			textLines.set(i, null);
+
+		textLines.notNullObjects(true);
 
 		// Now, DELETE those #NoUseString# based on content
-		// TODO FilterableList
-		for (int i = textLines.size() - 1; i >= 0; i--)
-			if (textLines.get(i).get_type() == TextLineType.CANNOT_RECOGNIZE)
-				textLines.remove(i);
-
-		for(int[] area: detectTable(textLines, wp, hp, lectureID))
-			// TODO FilterableList
-			for (int j = textLines.size() - 1; j >= 0; j--)
-				if (textLines.get(j).isInside(area))
-					textLines.remove(j);
+		textLines.filter(new FilterFunc<Boolean, textLine>() {
+			public Boolean call() { return true; }
+			public Boolean call(textLine line) { return line.get_type() != TextLineType.CANNOT_RECOGNIZE; }
+		}, true);
+		
+		for(final int[] area: detectTable(textLines, wp, hp, lectureID))
+			textLines.filter(new FilterFunc<Boolean, textLine>() {
+				public Boolean call() { return true; }
+				public Boolean call(textLine line) { return !line.isInside(area); }
+			}, true);
 
 		// now, DELETE those #NoUseString# based on size, remain those with
 		// height 9 or 10 for middleline detection
 
-		// TODO FilterableList
-		for (int i = textLines.size() - 1; i >= 0; i--)
-			if (textLines.get(i).get_type() == TextLineType.TOO_HIGH)
-				textLines.remove(i);
-
+		textLines.filter(new FilterFunc<Boolean, textLine>() {
+			public Boolean call() { return true; }
+			public Boolean call(textLine line) { return line.get_type() != TextLineType.TOO_HIGH; }
+		}, true);
+		
 		// Next, load those text left
 		loadTextInHierarchyAdaptively(textLines, Gaps, lowCaseStart, extraSignStart);
 
@@ -167,7 +170,7 @@ public class slidePage {
 		isSlideWellOrganized();
 	}
 
-	private void init(ArrayList<textLine> textLines, int pageWidth, int pageHeight) {
+	private void init(FilterableList<textLine> textLines, int pageWidth, int pageHeight) {
 
 		// This constructor will be used for a raw page: common use
 
@@ -201,14 +204,15 @@ public class slidePage {
 
 		// Third, find the title from texts and delete the textlines for title
 		for (int i: seekTitle(textLines)) 
-			textLines.remove(i);
+			textLines.set(i, null);
 
-		
+		textLines.notNullObjects(true);
+
 		// Then, DELETE those #NoUseString#
-		// TODO FilterableList
-		for (int i = textLines.size() - 1; i >= 0; i--)
-			if (textLines.get(i).get_type().isNotCommon())
-				textLines.remove(i);
+		textLines.filter(new FilterFunc<Boolean, textLine>() {
+			public Boolean call() { return true; }
+			public Boolean call(textLine line) { return line.get_type().isCommon(); }
+		}, true);
 
 		// Next, load those text left
 		loadTextInHierarchy(textLines);
@@ -230,13 +234,13 @@ public class slidePage {
 		this.set_pageHeight(pageHeight);
 	}
 
-	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea,
+	public slidePage(FilterableList<textLine> list, int pageWidth, int pageHeight, ArrayList<int[]> potentialTitleArea,
 			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart, String lectureID)
 					throws IOException {
 		init(list, pageWidth, pageHeight, potentialTitleArea, Gaps, lowCaseStart, extraSignStart, lectureID);
 	}
 
-	public slidePage(ArrayList<textLine> list, int pageWidth, int pageHeight) {
+	public slidePage(FilterableList<textLine> list, int pageWidth, int pageHeight) {
 		init(list, pageWidth, pageHeight);
 	}
 
@@ -3007,8 +3011,7 @@ public class slidePage {
 		return list;
 	}
 
-	private ArrayList<int[]> detectTable(ArrayList<textLine> list, double wp, double hp, String lectureID)
-			throws IOException {
+	private ArrayList<int[]> detectTable(ArrayList<textLine> list, double wp, double hp, String lectureID) throws IOException {
 		ArrayList<int[]> allTableArea = new ArrayList<int[]>();
 		if (list.size() < 4)
 			return allTableArea;

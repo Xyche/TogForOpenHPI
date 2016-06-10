@@ -316,7 +316,7 @@ public class outlineGenerator {
 	private FilterableList<slidePage> generateSlidePageStructure(ArrayList<textLine> tll, String text) throws IOException{
 		LoggerSingleton.info(text);
 		
-		ArrayList<textLine> tl2 = new ArrayList<textLine>();
+		FilterableList<textLine> tl2 = new FilterableList<textLine>();
 		FilterableList<slidePage> sps = new FilterableList<slidePage>();
 		int tempPageNum = 1;
 		
@@ -395,7 +395,7 @@ public class outlineGenerator {
 		return sps;
 	}
 
-	private FilterableList<slidePage> searchIndexPage(FilterableList<slidePage> sps) throws Exception {
+	private FilterableList<slidePage> searchIndexPage(FilterableList<slidePage> sps) {
 		if (!isTag)
 			return findIndexPage(sps, 0, sps.size() - 1);
 		else {
@@ -439,7 +439,7 @@ public class outlineGenerator {
 		analyzeHerarchicalGap(sps);
 	}
 	
-	private FilterableList<textOutline> generate(FilterableList<slidePage> sps) throws Exception {
+	private FilterableList<textOutline> generate(FilterableList<slidePage> sps) {
 		ArrayList<ArrayList<Integer>> samePageGroups = findSamePages(sps);
 		LoggerSingleton.show("< STEP 4: Remove repeated and empty pages >", samePageGroups);
 
@@ -601,7 +601,7 @@ public class outlineGenerator {
 	 * Finally bubble-reorder each of the similar slide groups.
 	 * @throws Exception 
 	 */
-	private ArrayList<ArrayList<Integer>> findSamePages(FilterableList<slidePage> sps) throws Exception {
+	private ArrayList<ArrayList<Integer>> findSamePages(FilterableList<slidePage> sps) {
 
 		ArrayList<ArrayList<Integer>> samePageGroups = new ArrayList<ArrayList<Integer>>();
 		
@@ -1133,7 +1133,7 @@ public class outlineGenerator {
 	 * removed.
 	 * @throws Exception 
 	 */
-	private FilterableList<slidePage> findIndexPage(FilterableList<slidePage> sps, int beginPosition, int endPosition) throws Exception {
+	private FilterableList<slidePage> findIndexPage(FilterableList<slidePage> sps, int beginPosition, int endPosition) {
 		if (endPosition <= beginPosition)
 			return sps;
 		LoggerSingleton.info("Searching Index Page in << " + sps.get(beginPosition).get_PageNum() + " "
