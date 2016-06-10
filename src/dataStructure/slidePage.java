@@ -1363,34 +1363,36 @@ public class slidePage {
 			if (currentBlockInitials)
 				currentChar = 'a';
 
-				if (lowCaseStart && ( 
-						!Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar) || 
-						Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar)))
-					p3 = -2;
-				else if(lowCaseStart && !Character.isUpperCase(prevChar) && !Character.isUpperCase(currentChar))
-					p3 = -1;
-				else if (lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
-					p3 = 1;
-				else if(lowCaseStart && !(!Character.isUpperCase(prevChar) && !Character.isUpperCase(currentChar)|| (Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))))
-					p3 = 0;
-				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
-					p3 = 2;
-				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
-					p3 = 1;
-				else if(!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
-					p3 = -4;
-				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
-					p3 = 1;
-				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isDigit(currentChar))
-					p3 = 0;
-				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
-					p3 = -4;
-				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
-					p3 = -1;
-				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
-					p3 = -2;
-				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
-					p3 = -5;
+
+			if (lowCaseStart && (Character.isLowerCase(prevChar) || Character.isDigit(prevChar)) && Character.isUpperCase(currentChar))
+				p3 = -2;
+			else if (lowCaseStart && (Character.isLowerCase(prevChar) || Character.isDigit(prevChar)) && !Character.isUpperCase(currentChar))
+				p3 = -1;
+			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
+				p3 = -2;
+			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
+				p3 = 1;
+			else if (lowCaseStart && !Character.isLowerCase(prevChar) && !Character.isDigit(prevChar) && Character.isDigit(currentChar))
+				p3 = 0;
+			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
+				p3 = 2;
+			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
+				p3 = 1;
+			else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
+				p3 = -4;
+			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
+				p3 = 1;
+			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isDigit(currentChar))
+				p3 = 0;
+			else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
+				p3 = -4;
+			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isLowerCase(currentChar))
+				p3 = -1;
+			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isDigit(currentChar))
+				p3 = -2;
+			else if (!lowCaseStart && Character.isLowerCase(prevChar) && Character.isUpperCase(currentChar))
+				p3 = -5;
+
 
 
 			// 4. Vertical line space
