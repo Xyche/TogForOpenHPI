@@ -708,4 +708,11 @@ public class textLine {
 		
 		return aligns;
 	}
+
+	public boolean isBlockInitials() {
+		return 
+			Character.isUpperCase(this.get_text().charAt(0)) && 
+			this.get_text().length() > 1 && 
+			Character.isUpperCase(this.get_text().charAt(1));
+	}
 }

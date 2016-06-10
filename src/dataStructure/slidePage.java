@@ -6,6 +6,7 @@ import helper.Constants;
 import helper.FilterableList;
 import helper.FilterableList.FilterFunc;
 import helper.LoggerSingleton;
+import helper.StaticMethods;
 import helper.enums.SlidePageType;
 import helper.enums.TextLineType;
 import sharedMethods.algorithmInterface;
@@ -887,12 +888,12 @@ public class slidePage {
 		return titleCandidates;
 	}
 
-	private void loadTextInHierarchy(ArrayList<textLine> list) {
-		if (list.size() == 0)
+	private void loadTextInHierarchy(FilterableList<textLine> lines) {
+		if (lines.isEmpty())
 			return;
 
-		double wp = (double) this.get_pageWidth() / 1024;
-		double hp = (double) this.get_pageHeight() / 768;
+		double wp = (double) this.get_pageWidth() / Constants.DEFAULT_WIDTH;
+		double hp = (double) this.get_pageHeight() / Constants.DEFAULT_HEIGHT;
 
 		/*
 		 * In this function, all the textLines left (after deleting the no-use
@@ -900,73 +901,70 @@ public class slidePage {
 		 * occupied 2 vertical lines or more will be combined, and the (x, y) of
 		 * combined textLined will be updated Then, do the loading process
 		 */
-		for (int i = 1; i < list.size(); i++) {
-			if (isTextContinued(list, i)) {
-				boolean isSameLine = false;
-				if ((list.get(i).get_top() < list.get(i - 1).get_top() + 7 * hp
-						&& list.get(i).get_top() > list.get(i - 1).get_top() - 7 * hp)
-						|| (list.get(i).get_bottom() < list.get(i - 1).get_bottom() + 7 * hp
-								&& list.get(i).get_bottom() > list.get(i - 1).get_bottom() - 7 * hp)) {
-					if (list.get(i).get_left() < list.get(i - 1).get_left()) {
-						textLine t = list.get(i);
-						list.set(i, list.get(i - 1));
-						list.set(i - 1, t);
-					}
-					list.get(i - 1)
-							.set_width(list.get(i).get_left() + list.get(i).get_width() - list.get(i - 1).get_left());
-					list.get(i - 1).set_lastLineWidth(list.get(i - 1).get_width());
-					int height = list.get(i - 1).get_height() > list.get(i).get_height() ? list.get(i - 1).get_height()
-							: list.get(i).get_height();
-					list.get(i - 1).set_height(height);
-					isSameLine = true;
+		for(textLine line: lines.subList(1, lines.size())){
+			if(line == null) continue;
+			textLine previousLine = lines.get(lines.indexOf(line) - 1);
+			if(previousLine == null) continue;
+
+//		for (int i = 1; i < lines.size(); i++) {
+			if (isTextContinued(lines, line)) {
+				if ((line.get_top() < previousLine.get_top() + 7 * hp
+						&& line.get_top() > previousLine.get_top() - 7 * hp)
+						|| (line.get_bottom() < previousLine.get_bottom() + 7 * hp
+								&& line.get_bottom() > previousLine.get_bottom() - 7 * hp)) {
+					if (line.get_left() < previousLine.get_left())
+						Collections.swap(lines, lines.indexOf(line), lines.indexOf(previousLine));
+					
+					previousLine
+							.set_width(line.get_left() + line.get_width() - previousLine.get_left());
+					previousLine.set_lastLineWidth(previousLine.get_width());
+					int height = previousLine.get_height() > line.get_height() ? previousLine.get_height()
+							: line.get_height();
+					previousLine.set_height(height);
 
 				} else {
-					int right = list.get(i - 1).get_left() + list.get(i - 1).get_width() < list.get(i).get_left()
-							+ list.get(i).get_width() ? list.get(i).get_left() + list.get(i).get_width()
-									: list.get(i - 1).get_left() + list.get(i - 1).get_width();
-					list.get(i - 1).set_width(right - list.get(i - 1).get_left());
-					list.get(i - 1).set_lastLineWidth(list.get(i).get_lastLineWidth());
-					int height = list.get(i - 1).get_height() > list.get(i).get_height() ? list.get(i - 1).get_height()
-							: list.get(i).get_height();
-					list.get(i - 1).set_height(height);
-					list.get(i - 1).set_bottom(list.get(i).get_bottom());
+					int right = previousLine.get_left() + previousLine.get_width() < line.get_left()
+							+ line.get_width() ? line.get_left() + line.get_width()
+									: previousLine.get_left() + previousLine.get_width();
+					previousLine.set_width(right - previousLine.get_left());
+					previousLine.set_lastLineWidth(line.get_lastLineWidth());
+					int height = previousLine.get_height() > line.get_height() ? previousLine.get_height()
+							: line.get_height();
+					previousLine.set_height(height);
+					previousLine.set_bottom(line.get_bottom());
 				}
 
-				list.get(i - 1).set_text(list.get(i - 1).get_text() + " " + list.get(i).get_text());
-				list.remove(i);
-				i--;
-				if (isSameLine)
-					i--;
+				previousLine.set_text(previousLine.get_text() + " " + line.get_text());
+				lines.set(lines.indexOf(line), null);
 			}
 		}
 
 		if (this.get_title().length() == 0) {
-			if (list.size() > 3) {
-				for (int i = 0; i < list.size(); i++) {
-					if (list.get(i).get_left() > 10 * wp
-							&& list.get(i).get_left() + list.get(i).get_width() < 950 * wp) {
-						this.set_title(list.get(i).get_text());
-						this._titleLocation[0] = list.get(i).get_left();
-						this._titleLocation[1] = list.get(i).get_left() + list.get(i).get_width();
-						this._titleLocation[2] = list.get(i).get_top();
-						this._titleLocation[3] = list.get(i).get_bottom();
-						list.remove(i);
+			if (lines.size() > 3) {
+				for (int i = 0; i < lines.size(); i++) {
+					if (lines.get(i).get_left() > 10 * wp
+							&& lines.get(i).get_left() + lines.get(i).get_width() < 950 * wp) {
+						this.set_title(lines.get(i).get_text());
+						this._titleLocation[0] = lines.get(i).get_left();
+						this._titleLocation[1] = lines.get(i).get_left() + lines.get(i).get_width();
+						this._titleLocation[2] = lines.get(i).get_top();
+						this._titleLocation[3] = lines.get(i).get_bottom();
+						lines.remove(i);
 						break;
 					}
 				}
 			}
 		}
 
-		this.set_texts(createTextOutlines(list));
+		this.set_texts(new ArrayList<>(createTextOutlines(lines)));
 	}
 
-	private void loadTextInHierarchyAdaptively(ArrayList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart,
+	private void loadTextInHierarchyAdaptively(FilterableList<textLine> list, ArrayList<Integer> Gaps, boolean lowCaseStart,
 			boolean extraSignStart) {
-		if (list.size() == 0)
+		if (list.isEmpty())
 			return;
 
-		double wp = (double) this.get_pageWidth() / 1024;
-		// double hp = (double)this.get_pageHeight() / 768;
+		double wp = (double) this.get_pageWidth() / Constants.DEFAULT_WIDTH;
 
 		// Do the text-lines combination in same row only
 		this.connectContinuousTextlineInSameRowOnly(list, Gaps, lowCaseStart, extraSignStart);
@@ -978,18 +976,7 @@ public class slidePage {
 
 		if (this.get_middleLine() < 0) {
 			for (int i = 1; i < list.size() - 2; i++) {
-				ArrayList<textLine> subList = new ArrayList<textLine>();
-				for (int j = i + 1; j < list.size(); j++) {
-					textLine t = list.get(j);
-					subList.add(t);
-				}
-				/*
-				 * if(list.get(i).get_text().contentEquals(
-				 * "several special cases at sindularities")) {
-				 * LoggerSingleton.info("$$$$$$"); for(int j = i+1; j <
-				 * list.size(); j++)
-				 * LoggerSingleton.info(list.get(j).get_text()); }
-				 */
+				FilterableList<textLine> subList = list.slice(1, list.size() - 2);
 				int subMiddleLine = searchHorizontalMiddleLine(subList, wp);
 				if (subMiddleLine < this._pageWidth / 3 || subMiddleLine > this._pageWidth * 0.75)
 					continue;
@@ -999,86 +986,61 @@ public class slidePage {
 					continue;
 				else {
 					LoggerSingleton.info("$$$$ Above-Left-Right");
-					ArrayList<textLine> aboveList = new ArrayList<textLine>();
-					for (int j = 0; j <= i; j++) {
-						textLine t = list.get(j);
-						aboveList.add(t);
-					}
-
-					this.set_texts(refinedTextOutlineLoading(aboveList, -1, Gaps, lowCaseStart, extraSignStart));
+					set_texts(refinedTextOutlineLoading(list.slice(0, i + 1), -1, Gaps, lowCaseStart, extraSignStart));
 					LoggerSingleton.info("Sub-Middleline = " + subMiddleLine);
-					this.get_texts().addAll(
-							refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
+					get_texts().addAll(refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
 					return;
 				}
 			}
 
-			for (int i = list.size() - 1; i > 1; i--) {
-				ArrayList<textLine> subList = new ArrayList<textLine>();
-				for (int j = 0; j < i; j++) {
-					textLine t = list.get(j);
-					subList.add(t);
-				}
+			for (textLine line: list.slice(2, list.size())){
+				textLine prevLine = list.previous(line);
+				FilterableList<textLine> subList = list.slice(0, list.indexOf(list));
 
 				int subMiddleLine = searchHorizontalMiddleLine(subList, wp);
 				if (subMiddleLine < this._pageWidth / 3 || subMiddleLine > this._pageWidth * 0.75)
 					continue;
-				else if (Math.abs(list.get(i).get_left() - list.get(i - 1).get_left()) <= 50)
+				else if (Math.abs(line.get_left() - prevLine.get_left()) <= 50)
 					continue;
-				else if (list.get(i).get_top() < this._pageHeight * 0.33)
+				else if (line.get_top() < this._pageHeight * 0.33)
 					continue;
 				else {
 					LoggerSingleton.info("$$$$ Left-Right-Bottom");
-					ArrayList<textLine> bottomList = new ArrayList<textLine>();
-					for (int j = i; j < list.size(); j++) {
-						textLine t = list.get(j);
-						bottomList.add(t);
-					}
-
 					LoggerSingleton.info("Sub-Middleline = " + subMiddleLine);
-					this.set_texts(
-							refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
-					this.get_texts()
-							.addAll(refinedTextOutlineLoading(bottomList, -1, Gaps, lowCaseStart, extraSignStart));
+					set_texts(refinedTextOutlineLoading(subList, subMiddleLine, Gaps, lowCaseStart, extraSignStart));
+					get_texts().addAll(refinedTextOutlineLoading(list.slice(list.indexOf(line), list.size()), -1, Gaps, lowCaseStart, extraSignStart));
 					return;
 				}
 			}
 
-			for (int i = 0; i < list.size() - 1; i++) {
-				if (list.get(i).get_top() < this.get_titleLocation()[3])
+			for (textLine current : list.subList(0, list.size() - 1)) {
+				textLine next = list.next(current);
+				if (current == null || current.get_top() < this.get_titleLocation()[3] || next == null)
 					continue;
 
-				for (int j = list.size() - 1; j > i; j--) {
-
-					ArrayList<textLine> subList = new ArrayList<textLine>();
-					for (int k = i + 1; k < j; k++) {
-						textLine t = list.get(k);
-						subList.add(t);
-					}
+				for (textLine line: list.slice(list.indexOf(next), list.size()).reversed()){
+					textLine prevLine = list.get(list.indexOf(line) - 1);
+					ArrayList<textLine> subList = list.slice(list.indexOf(next), list.indexOf(line));
 
 					if (searchHorizontalMiddleLine(subList, wp) > 0)
-						if (Math.abs(list.get(i).get_left() - list.get(i + 1).get_left()) > 50
-								|| list.get(i + 1).get_top() - list.get(i).get_bottom() > Math
-										.min(list.get(i).get_height(), list.get(i + 1).get_height()) * 2)
-							if (Math.abs(list.get(j).get_left() - list.get(j - 1).get_left()) > 50
-									|| list.get(j).get_top() - list.get(j - 1).get_bottom() > Math
-											.min(list.get(j).get_height(), list.get(j - 1).get_height()) * 2) {
+						if (
+							Math.abs(current.get_left() - next.get_left()) > 50 || 
+							next.get_top() - current.get_bottom() > Math.min(current.get_height(), next.get_height()) * 2)
+							if (
+								Math.abs(line.get_left() - prevLine.get_left()) > 50 || 
+								line.get_top() - prevLine.get_bottom() > Math.min(line.get_height(), prevLine.get_height()) * 2) {
 								LoggerSingleton.info("Remove some diagram content. [ " + subList.get(0).get_top() + ", "
 										+ subList.get(subList.size() - 1).get_bottom() + " ] " + subList.size()
 										+ " items removed");
-								for (int k = j - 1; k > i; k--) {
-									// LoggerSingleton.info(list.get(k).get_text());
-									list.remove(k);
-								}
-
+								list.setAll(list.indexOf(next), list.indexOf(line), null);
 								break;
 							}
 				}
 			}
 
-			this.set_texts(refinedTextOutlineLoading(list, this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
+			this.set_texts(refinedTextOutlineLoading(list.notNullObjects(true), this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
 		} else
-			this.set_texts(refinedTextOutlineLoading(list, this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
+			this.set_texts(refinedTextOutlineLoading(list.notNullObjects(true), this.get_middleLine(), Gaps, lowCaseStart, extraSignStart));
 	}
 
 	private ArrayList<textOutline> adjustColumnTextSystem(ArrayList<textOutline> list) {
@@ -1093,43 +1055,40 @@ public class slidePage {
 			return list;
 
 		int allLevel = 0, firstLevel = 0;
-		for (int i = 0; i < list.size(); i++) {
-			if (list.get(i).get_hierarchy() > 0) {
+		for (textOutline outline: list)
+			if (outline.get_hierarchy() > 0) {
 				allLevel++;
-				if (list.get(i).get_hierarchy() == 1)
+				if (outline.get_hierarchy() == 1)
 					firstLevel++;
 			}
-		}
+		
 
 		if (firstLevel * 3 > allLevel && allLevel >= 4) {
 			boolean first = false, second = false;
-			for (int i = 0; i < list.size(); i++) {
-				if (list.get(i).get_hierarchy() == 1) {
+			for (textOutline outline: list){
+				if (outline.get_hierarchy() == 1)
 					if (first)
 						second = true;
 					else
 						first = true;
-				}
-
-				if (second) {
-					if (list.get(i).get_hierarchy() == 1)
-						list.get(i).set_hierarchy(2);
-					else if (list.get(i).get_hierarchy() == 2)
-						list.get(i).set_hierarchy(3);
-					else if (list.get(i).get_hierarchy() == 3)
-						list.get(i).set_hierarchy(0);
-				}
+				if (second) 
+					if (outline.get_hierarchy() == 1)
+						outline.set_hierarchy(2);
+					else if (outline.get_hierarchy() == 2)
+						outline.set_hierarchy(3);
+					else if (outline.get_hierarchy() == 3)
+						outline.set_hierarchy(0);
 			}
 		}
 
 		return list;
 	}
 
-	private ArrayList<textLine> connectContinuousTextlineInSameRowOnly(ArrayList<textLine> list,
+	private ArrayList<textLine> connectContinuousTextlineInSameRowOnly(FilterableList<textLine> list,
 			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart) {
 		for (int i = 1; i < list.size(); i++) {
 			if (list.get(i).isInSameRow(list.get(i - 1))) {
-				if (isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart)) {
+				if (isTextContinued(list, list.get(i), Gaps, lowCaseStart, extraSignStart)) {
 					if (list.get(i).get_left() < list.get(i - 1).get_left()) {
 						textLine t = list.get(i);
 						list.set(i, list.get(i - 1));
@@ -1153,13 +1112,13 @@ public class slidePage {
 		return list;
 	}
 
-	private ArrayList<textLine> connectContinuousTextLineMultiRowsOnly(ArrayList<textLine> list,
+	private FilterableList<textLine> connectContinuousTextLineMultiRowsOnly(FilterableList<textLine> list,
 			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart) {
 		for (int i = 1; i < list.size(); i++) {
 			if (list.get(i).isInSameRow(list.get(i - 1)))
 				continue;
 			else {
-				if (isTextContinued(list, i, Gaps, lowCaseStart, extraSignStart)) {
+				if (isTextContinued(list, list.get(i), Gaps, lowCaseStart, extraSignStart)) {
 					int right = list.get(i - 1).get_left() + list.get(i - 1).get_width() < list.get(i).get_left()
 							+ list.get(i).get_width() ? list.get(i).get_left() + list.get(i).get_width()
 									: list.get(i - 1).get_left() + list.get(i - 1).get_width();
@@ -1181,46 +1140,51 @@ public class slidePage {
 		return list;
 	}
 
-	private boolean isTextContinued(ArrayList<textLine> list, int index) {
-		double wp = (double) this.get_pageWidth() / 1024;
-		double hp = (double) this.get_pageHeight() / 768;
-
-		if (index == 0)
+	private boolean isTextContinued(ArrayList<textLine> list, textLine current) {
+		double wp = (double) this.get_pageWidth() / Constants.DEFAULT_WIDTH;
+		double hp = (double) this.get_pageHeight() / Constants.DEFAULT_HEIGHT;
+		textLine prePrevious = null, previous = null, next = null; 
+		int i = list.indexOf(current);
+		if(i - 1 >= 0) previous = list.get(i - 1);
+		if(i - 2 >= 0) prePrevious = list.get(i - 2);
+		if(i + 1 < list.size()) next = list.get(i + 1);
+		
+		if(current == null || previous == null)
 			return false;
 		else {
 			// footline or NoUseString will never be combined, while empty
 			// string will definitely be.
-			if (list.get(index).get_type() == TextLineType.FOOTLINE
-					|| list.get(index).get_type() == TextLineType.CANNOT_RECOGNIZE)
+			if (current.get_type() == TextLineType.FOOTLINE || current.get_type() == TextLineType.CANNOT_RECOGNIZE)
 				return false;
-			else if (list.get(index).get_text() == "")
+			else if (current.get_text().isEmpty())
 				return true;
 			else {
 				// if two textlines are in same vertical line and horizontally
 				// not too far away, combine them.
-				if ((list.get(index).get_top() < list.get(index - 1).get_top() + 7 * hp
-						&& list.get(index).get_top() > list.get(index - 1).get_top() - 7 * hp)
-						|| (list.get(index).get_bottom() < list.get(index - 1).get_bottom() + 7 * hp
-								&& list.get(index).get_bottom() > list.get(index - 1).get_bottom() - 7 * hp)
-						|| (list.get(index).get_top() - list.get(index - 1).get_top() > 0 && list.get(index).get_top()
-								- list.get(index - 1).get_top() < list.get(index - 1).get_height() / 2)
-						|| (list.get(index - 1).get_top() - list.get(index).get_top() > 0
-								&& list.get(index - 1).get_top()
-										- list.get(index).get_top() < list.get(index).get_height() / 2)) {
+				int 
+					prev_top = previous.get_top(),
+					curr_top = current.get_top(),
+					
+					prev_bot = previous.get_bottom(),
+					curr_bot = current.get_bottom(),
+					
+					prev_hei = previous.get_height(),
+					curr_hei = current.get_height(),
+				
+					prev_lef = previous.get_left(),
+					curr_lef = current.get_left(),
 
-					// LoggerSingleton.info(list.get(index-1).get_left() + " " +
-					// list.get(index-1).get_width() + " " +
-					// list.get(index).get_left());
-					if (list.get(index - 1).get_left() < list.get(index).get_left()) {
-						if (list.get(index - 1).get_left() + list.get(index - 1).get_width() + 100 * wp > list
-								.get(index).get_left())
-							return true;
-					} else {
-						if (list.get(index).get_left() + list.get(index).get_width() + 100 * wp > list.get(index - 1)
-								.get_left())
-							return true;
-					}
-				}
+					prev_wid = previous.get_width(),
+					curr_wid = current.get_width();
+				
+				if ((curr_top < prev_top + 7 * hp && curr_top > prev_top - 7 * hp) || 
+					(curr_bot < prev_bot + 7 * hp && curr_bot > prev_bot - 7 * hp) || 
+					(curr_top - prev_top > 0 && curr_top - prev_top < prev_hei / 2) || 
+					(prev_top - curr_top > 0 && prev_top - curr_top < curr_hei / 2))
+					if (
+						(prev_lef < current.get_left() && prev_lef + prev_wid + 100 * wp > curr_lef) || 
+						(prev_lef >= current.get_left() && curr_lef + curr_wid + 100 * wp > prev_lef))
+						return true;
 
 				/*
 				 * for others, four requirements: 1. Vertically near 2. Previous
@@ -1228,495 +1192,404 @@ public class slidePage {
 				 * Previous line should comparably longer in the context 4.
 				 * Horizontally meet the demand
 				 */
-				int aboveDistance = list.get(index).get_top() - list.get(index - 1).get_bottom();
-				int downDistance = (index == list.size() - 1) ? aboveDistance
-						: (list.get(index + 1).get_top() - list.get(index).get_bottom());
-				if (downDistance < 0) {
-					for (int k = index + 2; k < list.size(); k++) {
-						if (list.get(k).get_top() - list.get(index).get_bottom() > 0) {
-							downDistance = list.get(k).get_top() - list.get(index).get_bottom();
+				int downDistance = next == null ? current.get_top() - previous.get_bottom() : (next.get_top() - current.get_bottom());
+				int aboveDistance = current.get_top() - previous.get_bottom();
+				if (downDistance < 0)
+					for(textLine line: list.subList(Math.min(i + 2, list.size()), list.size()))
+						if (line.get_top() - current.get_bottom() > 0){
+							downDistance = line.get_top() - current.get_bottom();
 							break;
 						}
-					}
-				}
 
 				boolean isAboveBlock, isCurrentBlock;
-				if (list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z')
+				if (current.get_text().charAt(0) >= 'A' && current.get_text().charAt(0) <= 'Z')
 					isCurrentBlock = true;
-				else if (list.get(index).get_text().length() > 3 && list.get(index).get_text().charAt(1) == ' '
-						&& list.get(index).get_text().charAt(2) >= 'A' && list.get(index).get_text().charAt(2) <= 'Z')
+				else if (current.get_text().length() > 3 && current.get_text().charAt(1) == ' '
+						&& current.get_text().charAt(2) >= 'A' && current.get_text().charAt(2) <= 'Z')
 					isCurrentBlock = true;
 				else
 					isCurrentBlock = false;
 
-				if (list.get(index - 1).get_text().charAt(0) < 'a' || list.get(index - 1).get_text().charAt(0) > 'z')
+				if (previous.get_text().charAt(0) < 'a' || previous.get_text().charAt(0) > 'z')
 					isAboveBlock = true;
-				else if (list.get(index - 1).get_text().length() > 3 && list.get(index - 1).get_text().charAt(1) == ' '
-						&& list.get(index - 1).get_text().charAt(2) >= 'A'
-						&& list.get(index - 1).get_text().charAt(2) <= 'Z')
+				else if (previous.get_text().length() > 3 && previous.get_text().charAt(1) == ' '
+						&& previous.get_text().charAt(2) >= 'A'
+						&& previous.get_text().charAt(2) <= 'Z')
 					isAboveBlock = true;
 				else
 					isAboveBlock = false;
 
 				int count = 2;
-				int averageRight = list.get(index - 1).get_lastLineWidth() + list.get(index).get_lastLineWidth();
-				if (index >= 2 && list.get(index - 1).get_top() - list.get(index - 2).get_bottom() < 30 * hp
-						&& list.get(index - 1).get_left() < list.get(index - 2).get_left() + 75 * wp
-						&& list.get(index - 1).get_left() > list.get(index - 2).get_left() - 75 * wp) {
-					averageRight += list.get(index - 2).get_lastLineWidth();
+				int averageRight = previous.get_lastLineWidth() + current.get_lastLineWidth();
+				if (prePrevious != null && 
+						prev_top  - prePrevious.get_bottom() < 30 * hp && 
+						prev_lef < prePrevious.get_left() + 75 * wp && 
+						prev_lef > prePrevious.get_left() - 75 * wp) {
+					averageRight += prePrevious.get_lastLineWidth();
 					count++;
 				}
-				if (index < list.size() - 1 && downDistance < 30 * hp
-						&& list.get(index + 1).get_left() < list.get(index).get_left() + 75 * wp
-						&& list.get(index + 1).get_left() > list.get(index).get_left() - 75 * wp) {
-					averageRight += list.get(index + 1).get_lastLineWidth();
+				if (next != null && 
+						downDistance < 30 * hp && 
+						next.get_left() < current.get_left() + 75 * wp && 
+						next.get_left() > current.get_left() - 75 * wp) {
+					averageRight += next.get_lastLineWidth();
 					count++;
 				}
 				averageRight /= count;
 
-				if (isAboveBlock && !isCurrentBlock && aboveDistance < downDistance * 2
-						&& aboveDistance < list.get(index).get_height() * 2
-						&& (list.get(index - 1).get_lastLineWidth() >= averageRight - 100 * wp
-								|| list.get(index - 1).get_lastLineWidth() + list.get(index - 1).get_left() > 750
-										* wp)) {
-					if (list.get(index).get_left() > list.get(index - 1).get_left() - 90 * wp
-							&& list.get(index).get_left() < list.get(index - 1).get_left() - 25 * wp)
-						return true;
-					else if (list.get(index).get_left() > list.get(index - 1).get_left() + 25 * wp
-							&& list.get(index).get_left() < list.get(index - 1).get_left() + 50 * wp)
-						return true;
-					else if (list.get(index).get_left() >= list.get(index - 1).get_left() - 15 * wp
-							&& list.get(index).get_left() <= list.get(index - 1).get_left() + 15 * wp)
-						return true;
-				}
+				if (isAboveBlock && !isCurrentBlock && 
+					aboveDistance < downDistance * 2 && 
+					aboveDistance < current.get_height() * 2 && 
+					(previous.get_lastLineWidth() >= averageRight - 100 * wp || previous.get_lastLineWidth() + previous.get_left() > 750 * wp) && 
+					(
+						(current.get_left() > previous.get_left() - 90 * wp && current.get_left() < previous.get_left() - 25 * wp) || 
+						(current.get_left() > previous.get_left() + 25 * wp && current.get_left() < previous.get_left() + 50 * wp) ||
+						(current.get_left() >= previous.get_left() - 15 * wp && current.get_left() <= previous.get_left() + 15 * wp)
+					)) return true;
 			}
 		}
 		return false;
 	}
 
-	private boolean isTextContinued(ArrayList<textLine> list, int index, ArrayList<Integer> Gaps, boolean lowCaseStart,
-			boolean extraSignStart) {
+	private boolean isTextContinued(FilterableList<textLine> list, textLine current, ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart) {
+		textLine previous = list.previous(current), prePrevious = list.previous(previous), next = list.next(current);
 		double wp = (double) this.get_pageWidth() / 1024;
-		// double hp = (double)this.get_pageHeight() / 768;
 
-		if (index <= 0)
+		if (list.indexOf(current) <= 0 || previous == null)
 			return false;
-		else if (list.get(index).get_type() == TextLineType.FOOTLINE
-				|| list.get(index).get_type() == TextLineType.CANNOT_RECOGNIZE)
+		else if (current.get_type() == TextLineType.FOOTLINE || current.get_type() == TextLineType.CANNOT_RECOGNIZE)
 			return false;
-		else if (list.get(index).get_text().length() == 0 || list.get(index).get_text().contentEquals(" "))
+		else if (current.get_text().length() == 0 || current.get_text().contentEquals(" "))
 			return true;
-		else {
-			// if two textlines are in same vertical line and horizontally not
-			// too far away, combine them.
-			if (list.get(index).isInSameRow(list.get(index - 1))) {
-				int maxGap = (list.get(index).get_width() + list.get(index - 1).get_width())
-						/ (list.get(index).get_text().length() + list.get(index - 1).get_text().length()) * 5;
-				maxGap = maxGap < 100 * wp ? maxGap : (int) (100 * wp);
+		if (current.isInSameRow(previous)) {
+			int maxGap = (current.get_width() + previous.get_width()) / (current.get_text().length() + previous.get_text().length()) * 5;
+			maxGap = maxGap < 100 * wp ? maxGap : (int) (100 * wp);
+			textLine l1, l2;
+			if (previous.get_left() < current.get_left()) {
+				l1 = previous;
+				l2 = current;
+			} else {
+				l1 = current;
+				l2 = previous;
+			}
 
-				if (list.get(index - 1).get_left() < list.get(index).get_left()) {
-					if (list.get(index - 1).get_left() + list.get(index - 1).get_width() < 512 * wp
-							&& list.get(index).get_left() > 512 * wp) {
-						if (list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z')
-							return false;
-						if (Math.abs(list.get(index - 1).get_width() - list.get(index).get_width()) < Math
-								.min(list.get(index - 1).get_width(), list.get(index).get_width()))
-							return false;
-						if (list.get(index - 1).get_top() != list.get(index).get_top()
-								&& list.get(index - 1).get_bottom() != list.get(index).get_bottom())
-							return false;
+			if (l1.get_left() + l1.get_width() < 512 * wp && l2.get_left() > 512 * wp)
+				if (
+					Character.isUpperCase(l2.get_text().charAt(0)) ||
+					Math.abs(previous.get_width() - current.get_width()) < Math.min(previous.get_width(), current.get_width()) ||
+					(previous.get_top() != current.get_top() && previous.get_bottom() != current.get_bottom()))
+					return false;
+			
+			if (l1.get_left() + l1.get_width() + maxGap > l2.get_left())
+				return true;
+			
+		} else {
+			/*
+			 * for others, 6 factors to consider, quantified to a value: 1.
+			 * [-10, 0] : Hierarchical gap (VETO requirement) 2. [ -5, 2] :
+			 * Potential extra subtopic sign 3. [ -5, 2] : BLOCK start & low
+			 * case START 4. [-10, 2] : Vertical line space 5. [ -8, 2] :
+			 * Horizontal start position difference 6. [ -8, 2] : Horizontal
+			 * length
+			 */
+			int p1, p2, p3, p4, p5, p6;
+
+			// 1. Hierarchical gap
+			p1 = 0;
+			for (int gap: Gaps)
+				if (current.get_left() - previous.get_left() >= gap - 3 && current.get_left() - previous.get_left() <= gap + 3){
+					p1 = -10;
+					break;
+				}
+
+			/*
+			 * 2. extra subtopic sign
+			 *
+			 * The 'count' parameter here is used to mark whether there was
+			 * a extra subtopic sign removed in the beginning of adaptive
+			 * round.
+			 *
+			 * And when there was one in the current textLine, we believe
+			 * there is very rare change for a further combination.
+			 *
+			 * The only situation to recommend to combine is when above
+			 * textLine had a extra sign while current textLine hadn't.
+			 */
+			p2 = 0;
+			if (extraSignStart)
+				if (current.get_count() == -1)
+					p2 = -5;
+				else if (previous.get_count() == -1)
+					p2 = 2;
+				else
+					p2 = 0;
+			else
+				p2 = 0;
+
+			/*
+			 * 3. BLOCK & low case
+			 *
+			 * Based on the statistics in the last round, one set of slides
+			 * can me marked by whether they prone to have low-case letters
+			 * in the beginning of the subtopic, which saved in the boolean
+			 * parameter 'lowCaseStart'
+			 *
+			 * Note that we have special treatment of ABBREVIATIONs. When
+			 * lowCaseStart is true, we won't mark above textLine with a
+			 * ABBREVIATION start as BLOCK to promote a combination. And
+			 * whenever the current textLine beginning with ABBREVIATION
+			 * will be considered as low case. As a result, only an
+			 * ABBREVIATION start in above textLine while lowCaseStart is
+			 * false, it can be marked as BLOCK
+			 *
+			 * Furthermore, if current subtopic looks like
+			 * "1 First subtopic", "2 Second subtopic" which start with a
+			 * number and followed by a BLOCK letter when lowCaseStart is
+			 * false, it will also be considered as a BLOCK start to avoid
+			 * being combined.
+			 */
+			p3 = 0;
+			boolean 
+				prevBlockInitials = previous.isBlockInitials(),
+				currentBlockInitials = current.isBlockInitials();
+
+			char 
+				currentChar = StaticMethods.firstCharCase(current, lowCaseStart), 
+				prevChar = StaticMethods.firstCharCase(previous, lowCaseStart);
+
+			if (lowCaseStart && prevBlockInitials)
+				prevChar = 'a';
+
+			if (currentBlockInitials)
+				currentChar = 'a';
+
+				if (lowCaseStart && ( 
+						!Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar) || 
+						Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar)))
+					p3 = -2;
+				else if(lowCaseStart && !Character.isUpperCase(prevChar) && !Character.isUpperCase(currentChar))
+					p3 = -1;
+				else if (lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
+					p3 = 1;
+				else if(lowCaseStart && !(!Character.isUpperCase(prevChar) && !Character.isUpperCase(currentChar)|| (Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))))
+					p3 = 0;
+				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
+					p3 = 2;
+				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
+					p3 = 1;
+				else if(!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
+					p3 = -4;
+				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isLowerCase(currentChar))
+					p3 = 1;
+				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isDigit(currentChar))
+					p3 = 0;
+				else if (!lowCaseStart && Character.isDigit(prevChar) && Character.isUpperCase(currentChar))
+					p3 = -4;
+				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isLowerCase(currentChar))
+					p3 = -1;
+				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isDigit(currentChar))
+					p3 = -2;
+				else if (!lowCaseStart && Character.isUpperCase(prevChar) && Character.isUpperCase(currentChar))
+					p3 = -5;
+
+
+			// 4. Vertical line space
+			/*
+			 * Here we generally use line space (above and down) to evaluate
+			 * how possible neighboring textLines should be combined.
+			 *
+			 * 1st. if aboveDistance is too large, 3 time of current
+			 * textLine height, veto it.
+			 *
+			 * 2nd. if downDistance or above2Distance is too large, 8/3 of
+			 * the height, ignore it because it means there is no
+			 * correlation between current textLine and next one, or
+			 * pre-previous one.
+			 *
+			 * 3rd. if aboveDistance is 2 times larger of the current
+			 * height, marked as large line space, using a set of
+			 * measurement not promoting combination. Or else, promoting it.
+			 *
+			 * 4th. More combining chance when downDistance is obviously
+			 * larger than aboveDistance. While similar, promote it when
+			 * above2Distance is larger than aboveDistance.
+			 */
+			p4 = 0;
+			int charAveWidth = current.get_width() / current.get_text().length();
+			int aboveDistance = current.get_top() - previous.get_bottom();
+			int downDistance = next == null ? aboveDistance : (next.get_top() - current.get_bottom());
+			if (downDistance < 0)
+				for (textLine line: list.subList(Math.min(list.indexOf(next) + 1, list.size()), list.size()))
+					if (line.get_top() - current.get_bottom() > 0) {
+						downDistance = line.get_top() - current.get_bottom();
+						break;
 					}
 
-					if (list.get(index - 1).get_left() + list.get(index - 1).get_width() + maxGap > list.get(index)
-							.get_left())
-						return true;
-				} else {
-					if (list.get(index).get_left() + list.get(index).get_width() < 512 * wp
-							&& list.get(index - 1).get_left() > 512 * wp) {
-						if (list.get(index - 1).get_text().charAt(0) >= 'A'
-								&& list.get(index - 1).get_text().charAt(0) <= 'Z')
-							return false;
-						if (Math.abs(list.get(index - 1).get_width() - list.get(index).get_width()) < Math
-								.min(list.get(index - 1).get_width(), list.get(index).get_width()))
-							return false;
-						if (list.get(index - 1).get_top() != list.get(index).get_top()
-								&& list.get(index - 1).get_bottom() != list.get(index).get_bottom())
-							return false;
-					}
+			if (downDistance > current.get_height() * 2.66)
+				downDistance = aboveDistance;
+			else if (next != null && Math.abs(next.get_left() - current.get_left()) > 5 * charAveWidth)
+				downDistance = aboveDistance;
 
-					if (list.get(index).get_left() + list.get(index).get_width() + maxGap > list.get(index - 1)
-							.get_left())
-						return true;
+			if (aboveDistance >= current.get_height() * 3)
+				p4 = -10;
+			else if (aboveDistance >= current.get_height() * 2.5)
+				p4 = -5;
+			else if (aboveDistance >= current.get_height() * 2) {
+				if (aboveDistance >= downDistance * 2)
+					p4 = -5;
+				else if (aboveDistance >= downDistance * 1.5)
+					p4 = -3;
+				else if (downDistance >= aboveDistance * 2)
+					p4 = 0;
+				else if (downDistance >= aboveDistance * 1.5)
+					p4 = -1;
+				else {
+					int above2Distance = prePrevious == null ? aboveDistance : previous.get_top() - prePrevious.get_top();
+					if (above2Distance >= aboveDistance * 2)
+						p4 = 0;
+					else if (above2Distance >= aboveDistance * 1.5)
+						p4 = -1;
+					else
+						p4 = -2;
 				}
 			} else {
-				/*
-				 * for others, 6 factors to consider, quantified to a value: 1.
-				 * [-10, 0] : Hierarchical gap (VETO requirement) 2. [ -5, 2] :
-				 * Potential extra subtopic sign 3. [ -5, 2] : BLOCK start & low
-				 * case START 4. [-10, 2] : Vertical line space 5. [ -8, 2] :
-				 * Horizontal start position difference 6. [ -8, 2] : Horizontal
-				 * length
-				 */
-				int p1, p2, p3, p4, p5, p6;
-
-				// 1. Hierarchical gap
-				p1 = 0;
-				for (int i = 0; i < Gaps.size(); i++) {
-					int currentGap = list.get(index).get_left() - list.get(index - 1).get_left();
-					if (currentGap >= Gaps.get(i) - 3 && currentGap <= Gaps.get(i) + 3)
-						p1 = -10;
-				}
-
-				/*
-				 * 2. extra subtopic sign
-				 *
-				 * The 'count' parameter here is used to mark whether there was
-				 * a extra subtopic sign removed in the beginning of adaptive
-				 * round.
-				 *
-				 * And when there was one in the current textLine, we believe
-				 * there is very rare change for a further combination.
-				 *
-				 * The only situation to recommend to combine is when above
-				 * textLine had a extra sign while current textLine hadn't.
-				 */
-				p2 = 0;
-				if (extraSignStart) {
-					if (list.get(index).get_count() == -1)
-						p2 = -5;
-					else if (list.get(index - 1).get_count() == -1)
-						p2 = 2;
-					else
-						p2 = 0;
-				} else
-					p2 = 0;
-
-				/*
-				 * 3. BLOCK & low case
-				 *
-				 * Based on the statistics in the last round, one set of slides
-				 * can me marked by whether they prone to have low-case letters
-				 * in the beginning of the subtopic, which saved in the boolean
-				 * parameter 'lowCaseStart'
-				 *
-				 * Note that we have special treatment of ABBREVIATIONs. When
-				 * lowCaseStart is true, we won't mark above textLine with a
-				 * ABBREVIATION start as BLOCK to promote a combination. And
-				 * whenever the current textLine beginning with ABBREVIATION
-				 * will be considered as low case. As a result, only an
-				 * ABBREVIATION start in above textLine while lowCaseStart is
-				 * false, it can be marked as BLOCK
-				 *
-				 * Furthermore, if current subtopic looks like
-				 * "1 First subtopic", "2 Second subtopic" which start with a
-				 * number and followed by a BLOCK letter when lowCaseStart is
-				 * false, it will also be considered as a BLOCK start to avoid
-				 * being combined.
-				 */
-				p3 = 0;
-				char above = ' ', current = ' ';
-				boolean aboveBlockInitials = false, currentBlockInitials = false;
-
-				if (list.get(index).get_text().charAt(0) >= 'A' && list.get(index).get_text().charAt(0) <= 'Z') {
-					current = 'A';
-					if (list.get(index).get_text().length() > 1)
-						if (list.get(index).get_text().charAt(1) >= 'A' && list.get(index).get_text().charAt(1) <= 'Z')
-							currentBlockInitials = true;
-				} else if (list.get(index).get_text().charAt(0) >= 'a' && list.get(index).get_text().charAt(0) <= 'z')
-					current = 'a';
+				if (aboveDistance >= downDistance * 2)
+					p4 = -2;
+				else if (aboveDistance >= downDistance * 1.5)
+					p4 = -1;
+				else if (downDistance >= aboveDistance * 2)
+					p4 = 2;
+				else if (downDistance >= aboveDistance * 1.5)
+					p4 = 1;
 				else {
-					if (list.get(index).get_text().length() > 3 && list.get(index).get_text().charAt(1) == ' '
-							&& !lowCaseStart && list.get(index).get_text().charAt(2) >= 'A'
-							&& list.get(index).get_text().charAt(2) <= 'Z')
-						current = 'A';
-					else
-						current = '8';
-				}
+					int above2Distance = prePrevious == null ? aboveDistance : previous.get_top() - prePrevious.get_bottom();
 
-				if (list.get(index - 1).get_text().charAt(0) >= 'A'
-						&& list.get(index - 1).get_text().charAt(0) <= 'Z') {
-					above = 'A';
-					if (list.get(index - 1).get_text().length() > 1)
-						if (list.get(index - 1).get_text().charAt(1) >= 'A'
-								&& list.get(index - 1).get_text().charAt(1) <= 'Z')
-							aboveBlockInitials = true;
-				} else if (list.get(index - 1).get_text().charAt(0) >= 'a'
-						&& list.get(index - 1).get_text().charAt(0) <= 'z')
-					above = 'a';
-				else {
-					if (list.get(index - 1).get_text().length() > 3 && list.get(index - 1).get_text().charAt(1) == ' '
-							&& !lowCaseStart && list.get(index - 1).get_text().charAt(2) >= 'A'
-							&& list.get(index - 1).get_text().charAt(2) <= 'Z')
-						above = 'A';
-					else
-						above = '8';
-				}
-
-				if (lowCaseStart && aboveBlockInitials)
-					above = 'a';
-
-				if (currentBlockInitials)
-					current = 'a';
-
-				if (lowCaseStart) {
-					if (above == 'a' || above == '8') {
-						if (current == 'A')
-							p3 = -2;
-						else
-							p3 = -1;
-					} else {
-						if (current == 'A')
-							p3 = -2;
-						else if (current == 'a')
-							p3 = 1;
-						else
-							p3 = 0;
-					}
-				} else {
-					if (above == 'A') {
-						if (current == 'a')
-							p3 = 2;
-						else if (current == '8')
-							p3 = 1;
-						else
-							p3 = -4;
-					} else if (above == '8') {
-						if (current == 'a')
-							p3 = 1;
-						else if (current == '8')
-							p3 = 0;
-						else
-							p3 = -4;
-					} else {
-						if (current == 'a')
-							p3 = -1;
-						else if (current == '8')
-							p3 = -2;
-						else
-							p3 = -5;
-					}
-
-				}
-
-				// 4. Vertical line space
-				/*
-				 * Here we generally use line space (above and down) to evaluate
-				 * how possible neighboring textLines should be combined.
-				 *
-				 * 1st. if aboveDistance is too large, 3 time of current
-				 * textLine height, veto it.
-				 *
-				 * 2nd. if downDistance or above2Distance is too large, 8/3 of
-				 * the height, ignore it because it means there is no
-				 * correlation between current textLine and next one, or
-				 * pre-previous one.
-				 *
-				 * 3rd. if aboveDistance is 2 times larger of the current
-				 * height, marked as large line space, using a set of
-				 * measurement not promoting combination. Or else, promoting it.
-				 *
-				 * 4th. More combining chance when downDistance is obviously
-				 * larger than aboveDistance. While similar, promote it when
-				 * above2Distance is larger than aboveDistance.
-				 */
-				p4 = 0;
-				int charAveWidth = list.get(index).get_width() / list.get(index).get_text().length();
-				int aboveDistance = list.get(index).get_top() - list.get(index - 1).get_bottom();
-				int downDistance = (index == list.size() - 1) ? aboveDistance
-						: (list.get(index + 1).get_top() - list.get(index).get_bottom());
-				if (downDistance < 0) {
-					for (int k = index + 2; k < list.size(); k++) {
-						if (list.get(k).get_top() - list.get(index).get_bottom() > 0) {
-							downDistance = list.get(k).get_top() - list.get(index).get_bottom();
-							break;
-						}
-					}
-				}
-
-				if (downDistance > list.get(index).get_height() * 2.66)
-					downDistance = aboveDistance;
-				else if (index < list.size() - 1
-						&& Math.abs(list.get(index + 1).get_left() - list.get(index).get_left()) > 5 * charAveWidth)
-					downDistance = aboveDistance;
-
-				if (aboveDistance >= list.get(index).get_height() * 3)
-					p4 = -10;
-				else if (aboveDistance >= list.get(index).get_height() * 2.5)
-					p4 = -5;
-				else if (aboveDistance >= list.get(index).get_height() * 2) {
-					if (aboveDistance >= downDistance * 2)
-						p4 = -5;
-					else if (aboveDistance >= downDistance * 1.5)
-						p4 = -3;
-					else if (downDistance >= aboveDistance * 2)
-						p4 = 0;
-					else if (downDistance >= aboveDistance * 1.5)
-						p4 = -1;
-					else {
-						int above2Distance = index == 1 ? aboveDistance
-								: list.get(index - 1).get_top() - list.get(index - 2).get_top();
-						if (above2Distance >= aboveDistance * 2)
-							p4 = 0;
-						else if (above2Distance >= aboveDistance * 1.5)
-							p4 = -1;
-						else
-							p4 = -2;
-					}
-				} else {
-					if (aboveDistance >= downDistance * 2)
-						p4 = -2;
-					else if (aboveDistance >= downDistance * 1.5)
-						p4 = -1;
-					else if (downDistance >= aboveDistance * 2)
+					if (above2Distance > current.get_height() * 2.66)
+						above2Distance = aboveDistance;
+					else if (prePrevious != null && Math.abs(prePrevious.get_left() - previous.get_left()) > 5 * charAveWidth)
+						above2Distance = aboveDistance;
+					if (above2Distance >= aboveDistance * 2)
 						p4 = 2;
-					else if (downDistance >= aboveDistance * 1.5)
+					else if (above2Distance >= aboveDistance * 1.5)
 						p4 = 1;
-					else {
-						int above2Distance = index == 1 ? aboveDistance
-								: list.get(index - 1).get_top() - list.get(index - 2).get_bottom();
-
-						if (above2Distance > list.get(index).get_height() * 2.66)
-							above2Distance = aboveDistance;
-						else if (index > 1
-								&& Math.abs(list.get(index - 2).get_left() - list.get(index - 1).get_left()) > 5
-										* charAveWidth)
-							above2Distance = aboveDistance;
-
-						if (above2Distance >= aboveDistance * 2)
-							p4 = 2;
-						else if (above2Distance >= aboveDistance * 1.5)
-							p4 = 1;
-						else
-							p4 = 0;
-					}
-				}
-
-				// 5. Start Position
-				// Pay attention that when lowCaseStart is true, drop this
-				// measurement.
-				p5 = 0;
-				int startGap = list.get(index).get_left() - list.get(index - 1).get_lastLineLeft();
-
-				if (startGap >= 0) {
-					if (startGap > 15 * charAveWidth)
-						p5 = -8;
-					else if (startGap > 10 * charAveWidth)
-						p5 = -5;
-					else if (startGap > 7 * charAveWidth)
-						p5 = -2;
-					else if (startGap > 5 * charAveWidth)
-						p5 = -1;
-					else if (startGap > 3 * charAveWidth)
-						p5 = 0;
-					else if (startGap > 1 * charAveWidth)
-						p5 = 1;
 					else
-						p5 = 2;
-				} else {
-					if (startGap < -15 * charAveWidth)
-						p5 = -8;
-					else if (startGap < -10 * charAveWidth)
-						p5 = -5;
-					else if (startGap < -7 * charAveWidth)
-						p5 = -2;
-					else if (startGap < -2 * charAveWidth)
-						p5 = 0;
-					else if (startGap < -1 * charAveWidth)
-						p5 = 1;
-					else
-						p5 = 2;
+						p4 = 0;
 				}
-
-				if (lowCaseStart)
-					p5 -= 2;
-
-				/*
-				 * 6. Length
-				 *
-				 * When current textLine is longer than above one, generally
-				 * there's no chance for a combination especially when the
-				 * difference is longer than the first word of current textLine.
-				 *
-				 * When above textLine is longer, it should be long enough
-				 * through all the textLines with their left-edge locating
-				 * similar to this above textLine. And the chance of combining
-				 * increases when the difference gets larger.
-				 *
-				 * And when lowCaseStart is true, we prone to combine less even
-				 * above textLine is longer.
-				 */
-				p6 = 0;
-
-				int aboveRight = list.get(index - 1).get_lastLineLeft() + list.get(index - 1).get_lastLineWidth();
-				int currentRight = list.get(index).get_left() + list.get(index).get_width();
-
-				if (aboveRight - currentRight < 0) {
-					String[] words = list.get(index).get_text().split(" ");
-					if (currentRight - aboveRight > charAveWidth * (words[0].length() + 3))
-						p6 = -8;
-					else if (currentRight - aboveRight > charAveWidth * (words[0].length() + 1))
-						p6 = -4;
-					else if (currentRight - aboveRight > charAveWidth * (words[0].length() - 1))
-						p6 = -2;
-					else if (currentRight - aboveRight > charAveWidth * 5)
-						p6 = -1;
-					else
-						p6 = 0;
-				} else {
-					String[] words = list.get(index).get_text().split(" ");
-					int rightmostInThisLevel = 0;
-					int threshold = lowCaseStart ? 8 : 3;
-					for (int i = 0; i < list.size(); i++)
-						if (list.get(i).get_left() > list.get(index - 1).get_lastLineLeft() - charAveWidth * threshold
-								&& list.get(i).get_left() < list.get(index - 1).get_lastLineLeft()
-										+ charAveWidth * threshold)
-							if (list.get(i).get_left() + list.get(i).get_width() > rightmostInThisLevel)
-								rightmostInThisLevel = list.get(i).get_left() + list.get(i).get_width();
-
-					if (rightmostInThisLevel - aboveRight < (words[0].length() + 3) * charAveWidth) {
-						if (lowCaseStart) {
-							if (aboveRight - currentRight > list.get(index).get_width() * 2)
-								p6 = 2;
-							else if (aboveRight - currentRight > list.get(index).get_width())
-								p6 = 1;
-							else
-								p6 = 0;
-						} else {
-							if (aboveRight - currentRight > list.get(index).get_width())
-								p6 = 2;
-							else if (aboveRight - currentRight > words[0].length() * charAveWidth)
-								p6 = 1;
-							else
-								p6 = 0;
-						}
-					} else {
-						if (lowCaseStart)
-							p6 = -5;
-						else
-							p6 = -2;
-					}
-				}
-				/*
-				 * if(list.get(index).get_slideID() > 1) {
-				 * LoggerSingleton.info("----------------------");
-				 * LoggerSingleton.info(list.get(index-1).get_text() + "\t" +
-				 * list.get(index-1).get_left() + "\t" + startGap);
-				 * LoggerSingleton.info(list.get(index).get_text() + "\t" +
-				 * list.get(index).get_left() + lowCaseStart);
-				 * LoggerSingleton.info(p1 + "  " + p2 + "  " + p3 + "  " + p4 +
-				 * "  " + p5 + "  " + p6 + " -> " + (p1 + p2 + p3 + p4 + p5 +
-				 * p6)); }
-				 */
-
-				if (p1 + p2 + p3 + p4 + p5 + p6 > 0)
-					return true;
 			}
+
+			// 5. Start Position
+			// Pay attention that when lowCaseStart is true, drop this
+			// measurement.
+			p5 = 0;
+			int startGap = current.get_left() - previous.get_lastLineLeft();
+
+			if (startGap >= 0) {
+				if (startGap > 15 * charAveWidth)
+					p5 = -8;
+				else if (startGap > 10 * charAveWidth)
+					p5 = -5;
+				else if (startGap > 7 * charAveWidth)
+					p5 = -2;
+				else if (startGap > 5 * charAveWidth)
+					p5 = -1;
+				else if (startGap > 3 * charAveWidth)
+					p5 = 0;
+				else if (startGap > 1 * charAveWidth)
+					p5 = 1;
+				else
+					p5 = 2;
+			} else {
+				if (startGap < -15 * charAveWidth)
+					p5 = -8;
+				else if (startGap < -10 * charAveWidth)
+					p5 = -5;
+				else if (startGap < -7 * charAveWidth)
+					p5 = -2;
+				else if (startGap < -2 * charAveWidth)
+					p5 = 0;
+				else if (startGap < -1 * charAveWidth)
+					p5 = 1;
+				else
+					p5 = 2;
+			}
+
+			if (lowCaseStart)
+				p5 -= 2;
+
+			/*
+			 * 6. Length
+			 *
+			 * When current textLine is longer than above one, generally
+			 * there's no chance for a combination especially when the
+			 * difference is longer than the first word of current textLine.
+			 *
+			 * When above textLine is longer, it should be long enough
+			 * through all the textLines with their left-edge locating
+			 * similar to this above textLine. And the chance of combining
+			 * increases when the difference gets larger.
+			 *
+			 * And when lowCaseStart is true, we prone to combine less even
+			 * above textLine is longer.
+			 */
+			p6 = 0;
+
+			int aboveRight = previous.get_lastLineLeft() + previous.get_lastLineWidth();
+			int currentRight = current.get_left() + current.get_width();
+
+			if (aboveRight - currentRight < 0) {
+				String[] words = current.get_text().split(" ");
+				if (currentRight - aboveRight > charAveWidth * (words[0].length() + 3))
+					p6 = -8;
+				else if (currentRight - aboveRight > charAveWidth * (words[0].length() + 1))
+					p6 = -4;
+				else if (currentRight - aboveRight > charAveWidth * (words[0].length() - 1))
+					p6 = -2;
+				else if (currentRight - aboveRight > charAveWidth * 5)
+					p6 = -1;
+				else
+					p6 = 0;
+			} else {
+				String[] words = current.get_text().split(" ");
+				int rightmostInThisLevel = 0;
+				int threshold = lowCaseStart ? 8 : 3;
+				for (textLine line: list)
+					if (line.get_left() > previous.get_lastLineLeft() - charAveWidth * threshold && 
+						line.get_left() < previous.get_lastLineLeft() + charAveWidth * threshold &&
+						line.get_left() + line.get_width() > rightmostInThisLevel)
+							rightmostInThisLevel = line.get_left() + line.get_width();
+
+				if (rightmostInThisLevel - aboveRight < (words[0].length() + 3) * charAveWidth) {
+					if (lowCaseStart) {
+						if (aboveRight - currentRight > current.get_width() * 2)
+							p6 = 2;
+						else if (aboveRight - currentRight > current.get_width())
+							p6 = 1;
+						else
+							p6 = 0;
+					} else {
+						if (aboveRight - currentRight > current.get_width())
+							p6 = 2;
+						else if (aboveRight - currentRight > words[0].length() * charAveWidth)
+							p6 = 1;
+						else
+							p6 = 0;
+					}
+				} else {
+					if (lowCaseStart)
+						p6 = -5;
+					else
+						p6 = -2;
+				}
+			}
+
+			if (p1 + p2 + p3 + p4 + p5 + p6 > 0)
+				return true;
 		}
 
 		return false;
 	}
 
-	private ArrayList<textOutline> refinedTextOutlineLoading(ArrayList<textLine> list, int middleLine,
+	private ArrayList<textOutline> refinedTextOutlineLoading(FilterableList<textLine> list, int middleLine,
 			ArrayList<Integer> Gaps, boolean lowCaseStart, boolean extraSignStart) {
 		ArrayList<textOutline> result = new ArrayList<textOutline>();
 
@@ -1812,8 +1685,8 @@ public class slidePage {
 			} else
 				result = createTextOutlines(list);
 		} else { // split all text-lines into 2 groups by the middle axis
-			ArrayList<textLine> leftTexts = new ArrayList<textLine>();
-			ArrayList<textLine> rightTexts = new ArrayList<textLine>();
+			FilterableList<textLine> leftTexts = new FilterableList<textLine>();
+			FilterableList<textLine> rightTexts = new FilterableList<textLine>();
 			for (int i = 0; i < list.size(); i++) {
 				textLine t = list.get(i);
 				if (t.get_left() >= middleLine)
@@ -2070,15 +1943,21 @@ public class slidePage {
 		return result;
 	}
 
-	private ArrayList<textOutline> createTextOutlines(ArrayList<textLine> list) {
+	private ArrayList<textOutline> createTextOutlines(FilterableList<textLine> list) {
 		ArrayList<textOutline> result = new ArrayList<textOutline>();
 
 		// remove all those textlines with height 9 or 10
-		for (int i = list.size() - 1; i >= 0; i--)
-			if (list.get(i).get_type().isNotCommon())
-				list.remove(i);
+		list.filter(new FilterFunc<Boolean, textLine>() {
+			@Override
+			public Boolean call(textLine line) { 
+				return line != null && line.get_type().isCommon();
+			}
 
-		if (list.size() == 0)
+			@Override
+			public Boolean call() { return true; }
+		}, true);
+		
+		if (list.isEmpty())
 			return result;
 
 		double wp = (double) this.get_pageWidth() / 1024;
@@ -2936,7 +2815,7 @@ public class slidePage {
 		return false;
 	}
 
-	private ArrayList<textLine> halfThisColumnWhenNeeded(ArrayList<textLine> list, boolean left) {
+	private FilterableList<textLine> halfThisColumnWhenNeeded(FilterableList<textLine> list, boolean left) {
 		if (list.size() <= 1)
 			return list;
 		else if (list.get(list.size() - 1).get_bottom() - list.get(0).get_top() < this._pageHeight * 0.4)
@@ -2956,8 +2835,8 @@ public class slidePage {
 		aveHeight = aveHeight / list.size();
 
 		if (biggestLineSpace > aveHeight * 4) {
-			ArrayList<textLine> upperPart = new ArrayList<textLine>();
-			ArrayList<textLine> bottomPart = new ArrayList<textLine>();
+			FilterableList<textLine> upperPart = new FilterableList<textLine>();
+			FilterableList<textLine> bottomPart = new FilterableList<textLine>();
 
 			for (int i = 0; i < biggestLineSpacePosition; i++)
 				upperPart.add(list.get(i));

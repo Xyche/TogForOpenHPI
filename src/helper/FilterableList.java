@@ -1,6 +1,8 @@
 package helper;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.Callable;
 
 public class FilterableList<E> extends ArrayList<E>{
@@ -21,9 +23,10 @@ public class FilterableList<E> extends ArrayList<E>{
 	public FilterableList() {
 		super();
 	}
+	
 
 
-	public FilterableList(ArrayList<E> other_list) {
+	public FilterableList(Collection<? extends E> other_list) {
 		super(other_list);
 	}
 
@@ -55,6 +58,37 @@ public class FilterableList<E> extends ArrayList<E>{
 			this.addAll(result);
 		}
 		return result;
+	}
+
+
+	public FilterableList<E> slice(int i, int j) {
+		if( i >= j) return new FilterableList<E>(); 
+		return new FilterableList<E>(this.subList(i, j));
+	}
+
+	public FilterableList<E> reversed() {
+		FilterableList<E> res = new FilterableList<E>(this);
+		Collections.reverse(res);
+		return res;
+	}
+	
+	public E previous(E el){
+		if (el == null) return null;
+		int idx = this.indexOf(el);
+		return idx - 1 <= 0 ? null : this.get(idx - 1);
+	}
+	
+	public E next(E el){
+		if (el == null) return null;
+		int idx = this.indexOf(el);
+		return idx + 1 >= this.size() ? null : this.get(idx + 1);
+	}
+
+
+	public void setAll(int start, int end, E el) {
+		for(int i= start; i < end; i++)
+			this.set(i, el);
+		
 	}
 
 }

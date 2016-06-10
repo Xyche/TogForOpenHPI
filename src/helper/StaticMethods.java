@@ -6,6 +6,8 @@ import java.util.TimeZone;
 
 import com.google.common.base.Joiner;
 
+import dataStructure.textLine;
+
 public abstract class StaticMethods {
 
 	public static String joinPath(String... parts){
@@ -82,6 +84,23 @@ public abstract class StaticMethods {
         time.setTime(timeByMillisecond);
 //		LoggerSingleton.info(tag + ": " + hours + '\t' + minutes + '\t' + seconds + '\t' + timeByMillisecond);
 		return time;
+	}
+
+
+	public static char firstCharCase(textLine line, boolean lowCaseStart) {
+
+		if (Character.isUpperCase(line.get_text().charAt(0)))
+			return 'A';
+		else if (Character.isLowerCase(line.get_text().charAt(0)))
+			return 'a';
+		else
+			if (line.get_text().length() > 3 && 
+				line.get_text().charAt(1) == ' ' && 
+				!lowCaseStart && 
+				Character.isUpperCase(line.get_text().charAt(2)))
+				return 'A';
+			else
+				return '8';
 	}
 	
 }
