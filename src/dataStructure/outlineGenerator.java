@@ -339,6 +339,7 @@ public class outlineGenerator {
 	private FilterableList<slidePage> deleteAllUnorganizedTexts(FilterableList<slidePage> sps) {
 		FilterableList<slidePage> new_sps = new FilterableList<>();
 		for (slidePage page: sps) {
+			if(page.get_texts().isEmpty()) continue;
 			textOutline firstText = page.get_texts().get(0);
 			if (page.get_title().length() < 1 && (page.get_pageType().isNotCommon() || firstText.get_hierarchy() != 1))
 				continue;
@@ -1200,9 +1201,9 @@ public class outlineGenerator {
 		 */
 		for(Integer pos: IndexPos){
 			int posIdx = IndexPos.indexOf(pos), currentPos = pos + 1;
-			Integer nextPos = IndexPos.get(posIdx + 1);
-			slidePage page = sps.get(pos), currentPage = sps.get(currentPos);
 			boolean isLast = posIdx == IndexPos.size() - 1;
+			Integer nextPos = !isLast ? IndexPos.get(posIdx + 1) : null;
+			slidePage page = sps.get(pos), currentPage = sps.get(currentPos);
 			FilterableList<textOutline> outlines = new FilterableList<textOutline>(page.get_texts());
 			
 			for (textOutline outline: outlines) {
