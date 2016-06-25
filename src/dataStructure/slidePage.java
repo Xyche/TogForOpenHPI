@@ -4110,11 +4110,14 @@ public class slidePage {
 		return allTableArea;
 	}
 
-	private File get_tog_stats_file() {
+	private File get_tog_stats_file() throws IOException {
 		File f = new File(Constants.DEFAULT_TOG_STATS);
 		if (!f.canWrite())
 			f = new File("tog_stats.txt");
+		if (!f.canWrite())
+			f = File.createTempFile("tog_stats", ".txt");
 
+		LoggerSingleton.info(String.format("TOG stats are written to %s", f.getAbsolutePath()));
 		return f;
 	}
 
